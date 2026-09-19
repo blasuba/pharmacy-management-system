@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pms-postgres
+    environment:
+      POSTGRES_DB: pmsdb
+      POSTGRES_USER: pms_user
+      POSTGRES_PASSWORD: pms_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - pms_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pms_user -d pmsdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./pms-backend
+      dockerfile: Dockerfile
+    container_name: pms-backend
+    ports:
+      - "8081:8081"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/pmsdb
+      DB_USERNAME: pms_user
+      DB_PASSWORD: pms_password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./pms-frontend
+      dockerfile: Dockerfile
+    container_name: pms-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pms_pgdata:

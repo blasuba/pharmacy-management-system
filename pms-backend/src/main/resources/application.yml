@@ -1,0 +1,54 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: pms-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5434/pmsdb}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:pms_user}
+    password: ${DB_PASSWORD:pms_password}
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b}
+    expiration-ms: 86400000 # 24 hours
+    refresh-expiration-ms: 604800000 # 7 days
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
+  pharmacy:
+    name: "Apex Central Pharmacy & Distribution"
+    license: "PH-ET-2026-88910"
+    tax-number: "TIN-0098712345"
+    address: "Bole Medhanialem, Suite 402, Addis Ababa, Ethiopia"
+    phone: "+251-911-000000"
+    email: "contact@apexpharmacy.com"
+  seed:
+    admin-password: ${ADMIN_INITIAL_PASSWORD:Admin@123}
+    pharmacist-password: ${PHARMACIST_INITIAL_PASSWORD:Pharm@123}
+    cashier-password: ${CASHIER_INITIAL_PASSWORD:Cash@123}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
