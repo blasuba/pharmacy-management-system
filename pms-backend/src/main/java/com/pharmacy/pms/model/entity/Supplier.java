@@ -1,10 +1,12 @@
 package com.pharmacy.pms.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "suppliers")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Supplier extends BaseEntity {
 
     @Column(name = "name", nullable = false, length = 150)

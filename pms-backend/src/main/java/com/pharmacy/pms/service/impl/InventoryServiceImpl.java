@@ -1,6 +1,7 @@
 package com.pharmacy.pms.service.impl;
 
 import com.pharmacy.pms.dto.request.StockAdjustmentRequest;
+import com.pharmacy.pms.dto.response.StockMovementResponse;
 import com.pharmacy.pms.exception.InsufficientStockException;
 import com.pharmacy.pms.exception.ResourceNotFoundException;
 import com.pharmacy.pms.model.entity.DrugBatch;
@@ -48,7 +49,7 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public StockMovement adjustStock(StockAdjustmentRequest request, Long userId) {
+    public StockMovementResponse adjustStock(StockAdjustmentRequest request, Long userId) {
         DrugBatch batch = batchRepository.findById(request.getBatchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Drug Batch not found with ID: " + request.getBatchId()));
 
@@ -60,12 +61,15 @@ public class InventoryServiceImpl implements InventoryService {
         batch.setQuantityOnHand(newQuantity);
         batchRepository.save(batch);
 
-        return recordMovement(batch, userId, request.getMovementType(), request.getQuantityDelta(), "MANUAL_ADJUSTMENT", batch.getId(), request.getReason());
+        StockMovement movement = recordMovement(batch, userId, request.getMovementType(), request.getQuantityDelta(), "MANUAL_ADJUSTMENT", batch.getId(), request.getReason());
+        return new StockMovementResponse(movement);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<StockMovement> getRecentMovements() {
-        return movementRepository.findTop50ByOrderByCreatedAtDesc();
+    public List<StockMovementResponse> getRecentMovements() {
+        return movementRepository.findTop50ByOrderByCreatedAtDesc().stream()
+                .map(StockMovementResponse::new)
+                .toList();
     }
 }

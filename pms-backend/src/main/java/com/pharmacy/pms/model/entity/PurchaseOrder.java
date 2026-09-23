@@ -1,5 +1,6 @@
 package com.pharmacy.pms.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.pharmacy.pms.model.enums.PurchaseStatus;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -18,7 +19,8 @@ public class PurchaseOrder extends BaseEntity {
     @JoinColumn(name = "supplier_id", nullable = false)
     private Supplier supplier;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "branch_id")
     private Branch branch;
 

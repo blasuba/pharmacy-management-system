@@ -2,7 +2,7 @@ package com.pharmacy.pms.controller;
 
 import com.pharmacy.pms.dto.request.StockAdjustmentRequest;
 import com.pharmacy.pms.dto.response.ApiResponse;
-import com.pharmacy.pms.model.entity.StockMovement;
+import com.pharmacy.pms.dto.response.StockMovementResponse;
 import com.pharmacy.pms.security.PmsUserPrincipal;
 import com.pharmacy.pms.service.InventoryService;
 import jakarta.validation.Valid;
@@ -25,15 +25,15 @@ public class InventoryController {
 
     @PostMapping("/adjust")
     @PreAuthorize("hasAuthority('ROLE_OWNER') or hasAuthority('ROLE_PHARMACIST') or hasAuthority('INVENTORY_ADJUST')")
-    public ResponseEntity<ApiResponse<StockMovement>> adjustStock(
+    public ResponseEntity<ApiResponse<StockMovementResponse>> adjustStock(
             @Valid @RequestBody StockAdjustmentRequest request,
             @AuthenticationPrincipal PmsUserPrincipal principal) {
-        StockMovement movement = inventoryService.adjustStock(request, principal.getId());
+        StockMovementResponse movement = inventoryService.adjustStock(request, principal.getId());
         return ResponseEntity.ok(ApiResponse.success(movement, "Stock adjusted and logged in ledger"));
     }
 
     @GetMapping("/movements")
-    public ResponseEntity<ApiResponse<List<StockMovement>>> getRecentMovements() {
+    public ResponseEntity<ApiResponse<List<StockMovementResponse>>> getRecentMovements() {
         return ResponseEntity.ok(ApiResponse.success(inventoryService.getRecentMovements()));
     }
 }

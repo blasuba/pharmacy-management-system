@@ -1,9 +1,11 @@
 package com.pharmacy.pms.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "branches")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Branch extends BaseEntity {
 
     @Column(name = "name", nullable = false, length = 100)

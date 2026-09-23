@@ -12,7 +12,7 @@ public class StockAdjustmentRequest {
     private MovementType movementType; // DAMAGE_WRITE_OFF, EXPIRY_WRITE_OFF, MANUAL_ADJUSTMENT
 
     @NotNull(message = "Quantity delta is required")
-    private int quantityDelta; // Negative for loss/write-off, positive for count adjustment
+    private Integer quantityDelta; // Negative for loss/write-off, positive for count adjustment
 
     @NotBlank(message = "Reason for adjustment is required")
     private String reason;
@@ -23,8 +23,8 @@ public class StockAdjustmentRequest {
     public MovementType getMovementType() { return movementType; }
     public void setMovementType(MovementType movementType) { this.movementType = movementType; }
 
-    public int getQuantityDelta() { return quantityDelta; }
-    public void setQuantityDelta(int quantityDelta) { this.quantityDelta = quantityDelta; }
+    public Integer getQuantityDelta() { return quantityDelta; }
+    public void setQuantityDelta(Integer quantityDelta) { this.quantityDelta = quantityDelta; }
 
     public String getReason() { return reason; }
     public void setReason(String reason) { this.reason = reason; }

@@ -1,16 +1,20 @@
 package com.pharmacy.pms.service.impl;
 
+import com.pharmacy.pms.dto.request.CashTransactionRequest;
 import com.pharmacy.pms.dto.request.PosCartItemRequest;
 import com.pharmacy.pms.dto.request.PosCheckoutRequest;
+import com.pharmacy.pms.dto.request.SaleRefundRequest;
 import com.pharmacy.pms.dto.response.PosReceiptResponse;
 import com.pharmacy.pms.exception.BadRequestException;
 import com.pharmacy.pms.exception.InsufficientStockException;
 import com.pharmacy.pms.exception.ResourceNotFoundException;
 import com.pharmacy.pms.model.entity.*;
+import com.pharmacy.pms.model.enums.CashTransactionType;
 import com.pharmacy.pms.model.enums.CustomerType;
 import com.pharmacy.pms.model.enums.MovementType;
 import com.pharmacy.pms.model.enums.PaymentMethod;
 import com.pharmacy.pms.repository.*;
+import com.pharmacy.pms.service.CashManagementService;
 import com.pharmacy.pms.service.InventoryService;
 import com.pharmacy.pms.service.PosService;
 import org.springframework.stereotype.Service;
@@ -19,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,11 +39,13 @@ public class PosServiceImpl implements PosService {
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final InventoryService inventoryService;
+    private final CashManagementService cashManagementService;
 
     public PosServiceImpl(SaleRepository saleRepository, SaleItemRepository saleItemRepository,
                           DrugRepository drugRepository, DrugBatchRepository batchRepository,
                           CustomerRepository customerRepository, UserRepository userRepository,
-                          InventoryService inventoryService) {
+                          InventoryService inventoryService,
+                          CashManagementService cashManagementService) {
         this.saleRepository = saleRepository;
         this.saleItemRepository = saleItemRepository;
         this.drugRepository = drugRepository;
@@ -46,6 +53,7 @@ public class PosServiceImpl implements PosService {
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
         this.inventoryService = inventoryService;
+        this.cashManagementService = cashManagementService;
     }
 
     @Override
@@ -93,7 +101,67 @@ public class PosServiceImpl implements PosService {
             saleItemRepository.save(item);
         }
 
+        // Register sale in active cashier shift drawer
+        cashManagementService.recordSaleInShift(cashierId, paid, sale.getPaymentMethod());
+
         return new PosReceiptResponse(savedSale);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Sale> getAllSales(LocalDate startDate, LocalDate endDate, PaymentMethod paymentMethod) {
+        if (startDate != null && endDate != null) {
+            LocalDateTime start = LocalDateTime.of(startDate, LocalTime.MIN);
+            LocalDateTime end = LocalDateTime.of(endDate, LocalTime.MAX);
+            List<Sale> sales = saleRepository.findSalesBetweenDates(start, end);
+            if (paymentMethod != null) {
+                return sales.stream().filter(s -> s.getPaymentMethod() == paymentMethod).toList();
+            }
+            return sales;
+        }
+
+        List<Sale> all = saleRepository.findByOrderByCreatedAtDesc();
+        if (paymentMethod != null) {
+            return all.stream().filter(s -> s.getPaymentMethod() == paymentMethod).toList();
+        }
+        return all;
+    }
+
+    @Override
+    @Transactional
+    public PosReceiptResponse processRefund(SaleRefundRequest request, Long cashierId) {
+        SaleItem item = saleItemRepository.findById(request.getSaleItemId())
+                .orElseThrow(() -> new ResourceNotFoundException("Sale Item not found with ID: " + request.getSaleItemId()));
+
+        if (request.getQuantity() > item.getQuantity()) {
+            throw new BadRequestException("Refund quantity (" + request.getQuantity() + ") exceeds purchased quantity (" + item.getQuantity() + ")");
+        }
+
+        DrugBatch batch = item.getDrugBatch();
+        batch.setQuantityOnHand(batch.getQuantityOnHand() + request.getQuantity());
+        batchRepository.save(batch);
+
+        Sale sale = item.getSale();
+        BigDecimal refundAmount = item.getUnitPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
+
+        // Record stock return in immutable ledger
+        inventoryService.recordMovement(batch, cashierId, MovementType.SALE_RETURN, request.getQuantity(), "REFUND", sale.getId(), "Refund: " + request.getReason());
+
+        // Deduct from drawer if paid cash
+        if (sale.getPaymentMethod() == PaymentMethod.CASH) {
+            CashTransactionRequest txReq = new CashTransactionRequest();
+            txReq.setType(CashTransactionType.CASH_OUT);
+            txReq.setAmount(refundAmount);
+            txReq.setCategory("SALE_REFUND");
+            txReq.setReason("Refund for Invoice " + sale.getInvoiceNumber() + ": " + request.getReason());
+            cashManagementService.recordCashTransaction(txReq, cashierId);
+        } else if (sale.getPaymentMethod() == PaymentMethod.CREDIT_ACCOUNT && sale.getCustomer() != null) {
+            Customer customer = sale.getCustomer();
+            customer.setCurrentBalance(customer.getCurrentBalance().subtract(refundAmount).max(BigDecimal.ZERO));
+            customerRepository.save(customer);
+        }
+
+        return new PosReceiptResponse(sale);
     }
 
     private BigDecimal[] processAllCartItems(PosCheckoutRequest request, String invoiceNumber, Long cashierId, Sale sale, List<SaleItem> saleItems) {

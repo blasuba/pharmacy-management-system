@@ -1,5 +1,6 @@
 package com.pharmacy.pms.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
@@ -7,6 +8,7 @@ import java.math.BigDecimal;
 @Table(name = "sale_items")
 public class SaleItem extends BaseEntity {
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sale_id", nullable = false)
     private Sale sale;

@@ -1,5 +1,5 @@
 import { ApplicationConfig, provideZoneChangeDetection, importProvidersFrom } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withPreloading, PreloadAllModules } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/interceptors/auth.interceptor';
@@ -75,13 +75,26 @@ import {
   MapPin,
   Play,
   Pause,
-  Filter
+  Filter,
+  CircleDollarSign,
+  Wallet,
+  History,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Undo2,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Monitor,
+  Wrench,
+  Cpu,
+  Layers,
+  Archive
 } from 'lucide-angular';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
+    provideRouter(routes, withPreloading(PreloadAllModules)),
     provideHttpClient(withInterceptors([authInterceptor])),
     importProvidersFrom(LucideAngularModule.pick({
       Pill,
@@ -154,7 +167,20 @@ export const appConfig: ApplicationConfig = {
       MapPin,
       Play,
       Pause,
-      Filter
+      Filter,
+      CircleDollarSign,
+      Wallet,
+      History,
+      ArrowDownCircle,
+      ArrowUpCircle,
+      Undo2,
+      ArrowUpRight,
+      ArrowDownLeft,
+      Monitor,
+      Wrench,
+      Cpu,
+      Layers,
+      Archive
     }))
   ]
 };

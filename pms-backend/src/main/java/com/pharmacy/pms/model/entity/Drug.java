@@ -1,10 +1,12 @@
 package com.pharmacy.pms.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.pharmacy.pms.model.enums.DosageForm;
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "drugs")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Drug extends BaseEntity {
 
     @Column(name = "name", nullable = false, length = 150)

@@ -36,6 +36,14 @@ public class BatchServiceImpl implements BatchService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<BatchResponse> getAllBatches() {
+        return batchRepository.findAll().stream()
+                .map(BatchResponse::new)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<BatchResponse> getBatchesByDrug(Long drugId) {
         return batchRepository.findByDrugIdOrderByExpiryDateAsc(drugId).stream()
                 .map(BatchResponse::new)

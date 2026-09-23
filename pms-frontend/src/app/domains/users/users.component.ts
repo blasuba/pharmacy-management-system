@@ -4,8 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { LucideAngularModule } from 'lucide-angular';
 import { NotificationService } from '../../core/services/notification.service';
+import { ValidationService } from '../../core/services/validation.service';
 import { AuthService } from '../../core/auth/services/auth.service';
 import { environment } from '../../../environments/environment';
+import { PaginationComponent, PaginatePipe } from '../../shared';
 
 export interface UserItem {
   id: number;
@@ -37,7 +39,7 @@ export interface BranchItem {
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule, PaginationComponent, PaginatePipe],
   template: `
     <div style="display: flex; flex-direction: column; gap: 22px;">
       <!-- Header -->
@@ -76,6 +78,13 @@ export interface BranchItem {
 
       <!-- Users Data Table -->
       <div class="card" style="padding: 0; overflow: hidden;">
+        <app-pagination
+          [totalItems]="filteredUsers().length"
+          [pageSize]="pageSize()"
+          [currentPage]="page()"
+          (pageChange)="page.set($event)"
+          (pageSizeChange)="pageSize.set($event); page.set(1)">
+        </app-pagination>
         <div style="overflow-x: auto;">
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
             <thead style="background: #f8fafc; border-bottom: 1px solid var(--slate-200); color: var(--slate-600); font-weight: 700;">
@@ -90,7 +99,7 @@ export interface BranchItem {
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let user of filteredUsers()" style="border-bottom: 1px solid var(--slate-100); transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+              <tr *ngFor="let user of (filteredUsers() | paginate: page() : pageSize())" style="border-bottom: 1px solid var(--slate-100); transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
                 <!-- Staff info & avatar -->
                 <td style="padding: 14px 18px;">
                   <div style="display: flex; align-items: center; gap: 12px;">
@@ -98,31 +107,32 @@ export interface BranchItem {
                       {{ getInitials(user.fullName) }}
                     </div>
                     <div>
-                      <div style="font-weight: 700; color: var(--slate-900);">{{ user.fullName }}</div>
-                      <div style="font-size: 11px; color: var(--slate-500);">{{ user.email }}</div>
+                      <div style="font-weight: 800; color: var(--slate-900);">{{ user.fullName }}</div>
+                      <div style="font-size: 12px; color: var(--slate-500);">{{ user.email }}</div>
                     </div>
                   </div>
                 </td>
 
-                <td style="padding: 14px 18px; font-weight: 600; color: var(--slate-700);">
+                <!-- Username -->
+                <td style="padding: 14px 18px; font-weight: 600; color: var(--slate-800);">
                   <code>&#64;{{ user.username }}</code>
                 </td>
 
-                <!-- Roles -->
+                <!-- Assigned Role -->
                 <td style="padding: 14px 18px;">
-                  <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-                    <span *ngFor="let r of user.roles"
-                          [ngClass]="getRoleBadgeClass(r)"
-                          class="badge" style="display: inline-flex; align-items: center; gap: 4px;">
-                      <lucide-icon [name]="getRoleIconName(r)" [size]="12"></lucide-icon>
-                      {{ getRoleLabel(r) }}
+                  <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                    <span *ngFor="let role of user.roles" class="badge" [ngClass]="getRoleBadgeClass(role)">
+                      {{ getRoleLabel(role) }}
                     </span>
                   </div>
                 </td>
 
-                <!-- Branch -->
-                <td style="padding: 14px 18px; color: var(--slate-600);">
-                  {{ user.branchName || 'HQ Main' }}
+                <!-- Branch Store -->
+                <td style="padding: 14px 18px; color: var(--slate-700); font-weight: 500;">
+                  <span style="display: inline-flex; align-items: center; gap: 4px;">
+                    <lucide-icon name="building-2" [size]="13" color="#64748b"></lucide-icon>
+                    {{ user.branchName || 'Main Store' }}
+                  </span>
                 </td>
 
                 <!-- Phone -->
@@ -292,6 +302,10 @@ export class UsersComponent implements OnInit {
 
   searchQuery = '';
   selectedRoleFilter = '';
+
+  page = signal(1);
+  pageSize = signal(10);
+
   showModal = signal(false);
   isEditing = signal(false);
   editingUserId: number | null = null;
@@ -314,6 +328,7 @@ export class UsersComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private notificationService: NotificationService,
+    private validationService: ValidationService,
     public authService: AuthService
   ) {}
 
@@ -324,6 +339,7 @@ export class UsersComponent implements OnInit {
   }
 
   loadUsers(): void {
+    this.page.set(1);
     const q = this.searchQuery ? `?query=${encodeURIComponent(this.searchQuery)}` : '';
     this.http.get<any>(`${environment.apiUrl}/users${q}`).subscribe({
       next: (res) => this.users.set(res.data.content || []),
@@ -355,11 +371,14 @@ export class UsersComponent implements OnInit {
     return this.users().filter(u => u.roles && u.roles.includes(this.selectedRoleFilter));
   }
 
-  applyFilter(): void {}
+  applyFilter(): void {
+    this.page.set(1);
+  }
 
   resetFilters(): void {
     this.searchQuery = '';
     this.selectedRoleFilter = '';
+    this.page.set(1);
     this.loadUsers();
   }
 
@@ -403,6 +422,21 @@ export class UsersComponent implements OnInit {
   }
 
   saveUser(): void {
+    const fullName = `${this.formData.firstName || ''} ${this.formData.lastName || ''}`.trim();
+    const valResult = this.validationService.validateUser({
+      fullName,
+      username: this.formData.username,
+      email: this.formData.email,
+      phone: this.formData.phone,
+      password: this.formData.password,
+      roles: [this.selectedRole]
+    }, this.isEditing());
+
+    if (!valResult.valid) {
+      this.notificationService.warning(valResult.errors[0]);
+      return;
+    }
+
     this.isSubmitting = true;
     const payload = {
       ...this.formData,

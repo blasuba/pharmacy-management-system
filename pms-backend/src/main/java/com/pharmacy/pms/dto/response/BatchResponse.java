@@ -19,6 +19,11 @@ public class BatchResponse {
     private BigDecimal distributorPrice;
     private boolean expired;
     private boolean expiringSoon;
+    private String supplierName;
+    private Long supplierId;
+    private String dosageForm;
+    private String unitOfMeasure;
+    private String barcode;
 
     public BatchResponse() {}
 
@@ -28,6 +33,15 @@ public class BatchResponse {
             this.drugId = batch.getDrug().getId();
             this.drugName = batch.getDrug().getName();
             this.genericName = batch.getDrug().getGenericName();
+            if (batch.getDrug().getDosageForm() != null) {
+                this.dosageForm = batch.getDrug().getDosageForm().name();
+            }
+            this.unitOfMeasure = batch.getDrug().getUnitOfMeasure();
+            this.barcode = batch.getDrug().getBarcode();
+        }
+        if (batch.getSupplier() != null) {
+            this.supplierId = batch.getSupplier().getId();
+            this.supplierName = batch.getSupplier().getName();
         }
         this.batchNumber = batch.getBatchNumber();
         this.expiryDate = batch.getExpiryDate();
@@ -55,4 +69,9 @@ public class BatchResponse {
     public BigDecimal getDistributorPrice() { return distributorPrice; }
     public boolean isExpired() { return expired; }
     public boolean isExpiringSoon() { return expiringSoon; }
+    public String getSupplierName() { return supplierName; }
+    public Long getSupplierId() { return supplierId; }
+    public String getDosageForm() { return dosageForm; }
+    public String getUnitOfMeasure() { return unitOfMeasure; }
+    public String getBarcode() { return barcode; }
 }

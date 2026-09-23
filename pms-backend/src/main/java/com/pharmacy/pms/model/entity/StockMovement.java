@@ -1,5 +1,6 @@
 package com.pharmacy.pms.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.pharmacy.pms.model.enums.MovementType;
 import jakarta.persistence.*;
 
@@ -8,6 +9,7 @@ import jakarta.persistence.*;
     @Index(name = "idx_movement_batch", columnList = "drug_batch_id"),
     @Index(name = "idx_movement_created", columnList = "created_at")
 })
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class StockMovement extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.EAGER)

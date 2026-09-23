@@ -34,4 +34,17 @@ public class SupplierController {
     public ResponseEntity<ApiResponse<Supplier>> createSupplier(@RequestBody Supplier supplier) {
         return ResponseEntity.ok(ApiResponse.success(supplierService.createSupplier(supplier), "Supplier registered successfully"));
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_OWNER') or hasAuthority('SUPPLIER_MANAGE')")
+    public ResponseEntity<ApiResponse<Supplier>> updateSupplier(@PathVariable Long id, @RequestBody Supplier supplier) {
+        return ResponseEntity.ok(ApiResponse.success(supplierService.updateSupplier(id, supplier), "Supplier updated successfully"));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_OWNER') or hasAuthority('SUPPLIER_MANAGE')")
+    public ResponseEntity<ApiResponse<Void>> deleteSupplier(@PathVariable Long id) {
+        supplierService.deleteSupplier(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Supplier deleted successfully"));
+    }
 }

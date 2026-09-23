@@ -6,6 +6,7 @@ import com.pharmacy.pms.dto.response.BatchResponse;
 import java.util.List;
 
 public interface BatchService {
+    List<BatchResponse> getAllBatches();
     List<BatchResponse> getBatchesByDrug(Long drugId);
     List<BatchResponse> getActiveBatchesFefo(Long drugId);
     BatchResponse createBatch(BatchCreateRequest request, Long userId);

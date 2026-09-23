@@ -16,6 +16,8 @@ import java.util.Optional;
 public interface SaleRepository extends JpaRepository<Sale, Long> {
     Optional<Sale> findByInvoiceNumber(String invoiceNumber);
 
+    List<Sale> findByOrderByCreatedAtDesc();
+
     @Query("SELECT s FROM Sale s WHERE s.createdAt BETWEEN :startDate AND :endDate ORDER BY s.createdAt DESC")
     List<Sale> findSalesBetweenDates(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 

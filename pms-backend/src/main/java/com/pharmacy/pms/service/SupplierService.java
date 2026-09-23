@@ -7,4 +7,6 @@ public interface SupplierService {
     List<Supplier> getAllSuppliers();
     Supplier createSupplier(Supplier supplier);
     Supplier getSupplierById(Long id);
+    Supplier updateSupplier(Long id, Supplier supplier);
+    void deleteSupplier(Long id);
 }

@@ -1,9 +1,13 @@
 package com.pharmacy.pms.controller;
 
+import com.pharmacy.pms.dto.request.CustomerPaymentRequest;
 import com.pharmacy.pms.dto.response.ApiResponse;
 import com.pharmacy.pms.model.entity.Customer;
+import com.pharmacy.pms.security.PmsUserPrincipal;
 import com.pharmacy.pms.service.CustomerService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -42,5 +46,14 @@ public class CustomerController {
     public ResponseEntity<ApiResponse<Void>> deleteCustomer(@PathVariable Long id) {
         customerService.deleteCustomer(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Customer deleted successfully"));
+    }
+
+    @PostMapping("/{id}/pay")
+    public ResponseEntity<ApiResponse<Customer>> settlePayment(
+            @PathVariable Long id,
+            @Valid @RequestBody CustomerPaymentRequest request,
+            @AuthenticationPrincipal PmsUserPrincipal principal) {
+        Customer updated = customerService.settleCreditPayment(id, request, principal.getId());
+        return ResponseEntity.ok(ApiResponse.success(updated, "Customer credit payment recorded successfully"));
     }
 }

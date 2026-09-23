@@ -23,6 +23,11 @@ public class BatchController {
         this.batchService = batchService;
     }
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<BatchResponse>>> getAllBatches() {
+        return ResponseEntity.ok(ApiResponse.success(batchService.getAllBatches()));
+    }
+
     @GetMapping("/drug/{drugId}")
     public ResponseEntity<ApiResponse<List<BatchResponse>>> getBatchesByDrug(@PathVariable Long drugId) {
         return ResponseEntity.ok(ApiResponse.success(batchService.getBatchesByDrug(drugId)));

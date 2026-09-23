@@ -19,7 +19,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/users")
-@PreAuthorize("hasAuthority('ROLE_OWNER') or hasAuthority('USER_MANAGE')")
 public class UserController {
 
     private final UserService userService;
@@ -29,10 +28,11 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('ROLE_OWNER') or hasAuthority('USER_MANAGE') or hasAuthority('ROLE_CASHIER_ACCOUNTANT') or hasAuthority('ROLE_PHARMACIST')")
     public ResponseEntity<ApiResponse<PageResponse<UserResponse>>> getAllUsers(
             @RequestParam(required = false) String query,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "15") int size) {
+            @RequestParam(defaultValue = "100") int size) {
         PageResponse<UserResponse> users = userService.getAllUsers(
                 query,
                 PageRequest.of(page, size, Sort.by("id").descending())
@@ -41,6 +41,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_OWNER') or hasAuthority('USER_MANAGE') or hasAuthority('ROLE_CASHIER_ACCOUNTANT')")
     public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(userService.getUserById(id)));
     }
