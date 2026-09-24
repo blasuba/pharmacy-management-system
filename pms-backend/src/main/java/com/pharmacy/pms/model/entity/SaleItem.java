@@ -29,6 +29,9 @@ public class SaleItem extends BaseEntity {
     @Column(name = "discount_amount", precision = 12, scale = 2)
     private BigDecimal discountAmount = BigDecimal.ZERO;
 
+    @Column(name = "refunded_quantity", nullable = false)
+    private int refundedQuantity = 0;
+
     @Column(name = "subtotal", nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotal;
 
@@ -44,6 +47,9 @@ public class SaleItem extends BaseEntity {
 
     public int getQuantity() { return quantity; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
+
+    public int getRefundedQuantity() { return refundedQuantity; }
+    public void setRefundedQuantity(int refundedQuantity) { this.refundedQuantity = refundedQuantity; }
 
     public BigDecimal getUnitPrice() { return unitPrice; }
     public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }

@@ -133,9 +133,14 @@ public class PosServiceImpl implements PosService {
         SaleItem item = saleItemRepository.findById(request.getSaleItemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Sale Item not found with ID: " + request.getSaleItemId()));
 
-        if (request.getQuantity() > item.getQuantity()) {
-            throw new BadRequestException("Refund quantity (" + request.getQuantity() + ") exceeds purchased quantity (" + item.getQuantity() + ")");
+        int remainingRefundable = item.getQuantity() - item.getRefundedQuantity();
+        if (request.getQuantity() > remainingRefundable) {
+            throw new BadRequestException("Refund quantity (" + request.getQuantity() + ") exceeds remaining refundable quantity (" + remainingRefundable + ")");
         }
+
+        // Update item refunded quantity
+        item.setRefundedQuantity(item.getRefundedQuantity() + request.getQuantity());
+        saleItemRepository.save(item);
 
         DrugBatch batch = item.getDrugBatch();
         batch.setQuantityOnHand(batch.getQuantityOnHand() + request.getQuantity());
@@ -143,6 +148,21 @@ public class PosServiceImpl implements PosService {
 
         Sale sale = item.getSale();
         BigDecimal refundAmount = item.getUnitPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
+
+        // Update sale refunded amount & refundStatus
+        if (sale.getRefundedAmount() == null) {
+            sale.setRefundedAmount(BigDecimal.ZERO);
+        }
+        sale.setRefundedAmount(sale.getRefundedAmount().add(refundAmount));
+
+        boolean allItemsRefunded = sale.getItems().stream()
+                .allMatch(i -> i.getRefundedQuantity() >= i.getQuantity());
+        if (allItemsRefunded) {
+            sale.setRefundStatus("FULLY_REFUNDED");
+        } else {
+            sale.setRefundStatus("PARTIALLY_REFUNDED");
+        }
+        saleRepository.save(sale);
 
         // Record stock return in immutable ledger
         inventoryService.recordMovement(batch, cashierId, MovementType.SALE_RETURN, request.getQuantity(), "REFUND", sale.getId(), "Refund: " + request.getReason());

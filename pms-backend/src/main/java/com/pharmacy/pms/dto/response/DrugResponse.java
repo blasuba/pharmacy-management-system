@@ -17,10 +17,17 @@ public class DrugResponse {
     private boolean prescriptionRequired;
     private String status;
     private int totalStock;
+    private java.math.BigDecimal retailPrice = java.math.BigDecimal.ZERO;
+    private java.math.BigDecimal wholesalePrice = java.math.BigDecimal.ZERO;
+    private java.math.BigDecimal distributorPrice = java.math.BigDecimal.ZERO;
 
     public DrugResponse() {}
 
     public DrugResponse(Drug drug, int totalStock) {
+        this(drug, totalStock, java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO, java.math.BigDecimal.ZERO);
+    }
+
+    public DrugResponse(Drug drug, int totalStock, java.math.BigDecimal retailPrice, java.math.BigDecimal wholesalePrice, java.math.BigDecimal distributorPrice) {
         this.id = drug.getId();
         this.name = drug.getName();
         this.genericName = drug.getGenericName();
@@ -36,6 +43,9 @@ public class DrugResponse {
         this.prescriptionRequired = drug.isPrescriptionRequired();
         this.status = drug.getStatus();
         this.totalStock = totalStock;
+        this.retailPrice = retailPrice != null ? retailPrice : java.math.BigDecimal.ZERO;
+        this.wholesalePrice = wholesalePrice != null ? wholesalePrice : java.math.BigDecimal.ZERO;
+        this.distributorPrice = distributorPrice != null ? distributorPrice : java.math.BigDecimal.ZERO;
     }
 
     public Long getId() { return id; }
@@ -51,4 +61,7 @@ public class DrugResponse {
     public boolean isPrescriptionRequired() { return prescriptionRequired; }
     public String getStatus() { return status; }
     public int getTotalStock() { return totalStock; }
+    public java.math.BigDecimal getRetailPrice() { return retailPrice; }
+    public java.math.BigDecimal getWholesalePrice() { return wholesalePrice; }
+    public java.math.BigDecimal getDistributorPrice() { return distributorPrice; }
 }

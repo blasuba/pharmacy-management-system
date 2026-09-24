@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { LucideAngularModule } from 'lucide-angular';
 import { NotificationService } from '../../core/services/notification.service';
+import { ConfirmationService } from '../../core/services/confirmation.service';
 import { ValidationService } from '../../core/services/validation.service';
 import { environment } from '../../../environments/environment';
 import { PaginationComponent, PaginatePipe } from '../../shared';
@@ -396,7 +397,8 @@ export class PurchasesComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private notificationService: NotificationService,
-    private validationService: ValidationService
+    private validationService: ValidationService,
+    private confirmationService: ConfirmationService
   ) {}
 
   filteredOrders(): any[] {
@@ -564,8 +566,16 @@ export class PurchasesComponent implements OnInit {
     }
   }
 
-  deleteSupplier(supplier: Supplier) {
-    if (confirm(`Are you sure you want to delete supplier "${supplier.name}"?`)) {
+  async deleteSupplier(supplier: Supplier): Promise<void> {
+    const ok = await this.confirmationService.confirm({
+      title: 'Delete Vendor / Supplier',
+      message: `Are you sure you want to delete supplier "${supplier.name}"? Suppliers with active purchase orders cannot be removed.`,
+      confirmText: 'Delete Supplier',
+      type: 'danger',
+      icon: 'trash-2'
+    });
+
+    if (ok) {
       this.http.delete<any>(`${environment.apiUrl}/suppliers/${supplier.id}`).subscribe({
         next: () => {
           this.notificationService.success('Supplier removed successfully.');

@@ -48,7 +48,11 @@ public class DrugServiceImpl implements DrugService {
         LocalDate today = LocalDate.now();
         Page<DrugResponse> responsePage = page.map(drug -> {
             int stock = batchRepository.getTotalAvailableStockForDrug(drug.getId(), today);
-            return new DrugResponse(drug, stock);
+            var activeBatches = batchRepository.findActiveBatchesByDrugFefo(drug.getId(), today);
+            java.math.BigDecimal retail = activeBatches.isEmpty() ? java.math.BigDecimal.ZERO : activeBatches.get(0).getRetailPrice();
+            java.math.BigDecimal wholesale = activeBatches.isEmpty() ? java.math.BigDecimal.ZERO : activeBatches.get(0).getWholesalePrice();
+            java.math.BigDecimal distributor = activeBatches.isEmpty() ? java.math.BigDecimal.ZERO : activeBatches.get(0).getDistributorPrice();
+            return new DrugResponse(drug, stock, retail, wholesale, distributor);
         });
 
         return new PageResponse<>(responsePage);
@@ -59,8 +63,13 @@ public class DrugServiceImpl implements DrugService {
     public DrugResponse getDrugById(Long id) {
         Drug drug = drugRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(DRUG_NOT_FOUND + id));
-        int stock = batchRepository.getTotalAvailableStockForDrug(drug.getId(), LocalDate.now());
-        return new DrugResponse(drug, stock);
+        LocalDate today = LocalDate.now();
+        int stock = batchRepository.getTotalAvailableStockForDrug(drug.getId(), today);
+        var activeBatches = batchRepository.findActiveBatchesByDrugFefo(drug.getId(), today);
+        java.math.BigDecimal retail = activeBatches.isEmpty() ? java.math.BigDecimal.ZERO : activeBatches.get(0).getRetailPrice();
+        java.math.BigDecimal wholesale = activeBatches.isEmpty() ? java.math.BigDecimal.ZERO : activeBatches.get(0).getWholesalePrice();
+        java.math.BigDecimal distributor = activeBatches.isEmpty() ? java.math.BigDecimal.ZERO : activeBatches.get(0).getDistributorPrice();
+        return new DrugResponse(drug, stock, retail, wholesale, distributor);
     }
 
     @Override

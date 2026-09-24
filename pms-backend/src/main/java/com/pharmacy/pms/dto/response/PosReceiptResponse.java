@@ -22,19 +22,24 @@ public class PosReceiptResponse {
     private BigDecimal paidAmount;
     private BigDecimal changeAmount;
     private String prescriptionNumber;
+    private String refundStatus;
+    private BigDecimal refundedAmount;
     private List<ItemReceiptDto> items = new ArrayList<>();
 
     public static class ItemReceiptDto {
+        private Long id;
         private String drugName;
         private String genericName;
         private String batchNumber;
         private String expiryDate;
         private int quantity;
+        private int refundedQuantity;
         private BigDecimal unitPrice;
         private BigDecimal discount;
         private BigDecimal subtotal;
 
         public ItemReceiptDto(SaleItem item) {
+            this.id = item.getId();
             if (item.getDrugBatch() != null && item.getDrugBatch().getDrug() != null) {
                 this.drugName = item.getDrugBatch().getDrug().getName();
                 this.genericName = item.getDrugBatch().getDrug().getGenericName();
@@ -42,16 +47,19 @@ public class PosReceiptResponse {
                 this.expiryDate = item.getDrugBatch().getExpiryDate() != null ? item.getDrugBatch().getExpiryDate().toString() : "";
             }
             this.quantity = item.getQuantity();
+            this.refundedQuantity = item.getRefundedQuantity();
             this.unitPrice = item.getUnitPrice();
             this.discount = item.getDiscountAmount();
             this.subtotal = item.getSubtotal();
         }
 
+        public Long getId() { return id; }
         public String getDrugName() { return drugName; }
         public String getGenericName() { return genericName; }
         public String getBatchNumber() { return batchNumber; }
         public String getExpiryDate() { return expiryDate; }
         public int getQuantity() { return quantity; }
+        public int getRefundedQuantity() { return refundedQuantity; }
         public BigDecimal getUnitPrice() { return unitPrice; }
         public BigDecimal getDiscount() { return discount; }
         public BigDecimal getSubtotal() { return subtotal; }
@@ -80,6 +88,8 @@ public class PosReceiptResponse {
         this.paidAmount = sale.getPaidAmount();
         this.changeAmount = sale.getChangeAmount();
         this.prescriptionNumber = sale.getPrescriptionNumber();
+        this.refundStatus = sale.getRefundStatus() != null ? sale.getRefundStatus() : "COMPLETED";
+        this.refundedAmount = sale.getRefundedAmount() != null ? sale.getRefundedAmount() : BigDecimal.ZERO;
 
         if (sale.getItems() != null) {
             for (SaleItem item : sale.getItems()) {
@@ -102,5 +112,7 @@ public class PosReceiptResponse {
     public BigDecimal getPaidAmount() { return paidAmount; }
     public BigDecimal getChangeAmount() { return changeAmount; }
     public String getPrescriptionNumber() { return prescriptionNumber; }
+    public String getRefundStatus() { return refundStatus; }
+    public BigDecimal getRefundedAmount() { return refundedAmount; }
     public List<ItemReceiptDto> getItems() { return items; }
 }

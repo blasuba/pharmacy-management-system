@@ -4,11 +4,21 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../core/auth/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { BreadcrumbsComponent } from '../../shared/ui/breadcrumbs/breadcrumbs.component';
+import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, LucideAngularModule],
+  imports: [
+    CommonModule, 
+    RouterOutlet, 
+    RouterLink, 
+    RouterLinkActive, 
+    LucideAngularModule,
+    BreadcrumbsComponent,
+    ConfirmDialogComponent
+  ],
   template: `
     <div style="display: flex; min-height: 100vh; background: #f8fafc;">
       <!-- Sidebar -->
@@ -120,10 +130,16 @@ import { NotificationService } from '../../core/services/notification.service';
 
         <!-- Page Outlet -->
         <main style="flex: 1; padding: 24px 28px; background: #f8fafc;">
+          <!-- Shared Breadcrumbs -->
+          <app-breadcrumbs></app-breadcrumbs>
+          
           <router-outlet></router-outlet>
         </main>
       </div>
     </div>
+
+    <!-- Global Shared Confirmation Modal Host -->
+    <app-confirm-dialog></app-confirm-dialog>
 
     <!-- Toast Notifications Overlay -->
     <div style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; max-width: 360px;">

@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { NotificationService } from '../../core/services/notification.service';
+import { ConfirmationService } from '../../core/services/confirmation.service';
 import { ValidationService } from '../../core/services/validation.service';
 import { environment } from '../../../environments/environment';
 import { PaginationComponent, PaginatePipe } from '../../shared';
@@ -324,7 +325,8 @@ export class CustomersComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private notificationService: NotificationService,
-    private validationService: ValidationService
+    private validationService: ValidationService,
+    private confirmationService: ConfirmationService
   ) {}
 
   ngOnInit(): void {
@@ -448,8 +450,16 @@ export class CustomersComponent implements OnInit {
     }
   }
 
-  confirmDelete(customer: CustomerItem): void {
-    if (confirm(`Delete customer "${customer.name}"?`)) {
+  async confirmDelete(customer: CustomerItem): Promise<void> {
+    const ok = await this.confirmationService.confirm({
+      title: 'Delete Customer Account',
+      message: `Are you sure you want to delete customer account "${customer.name}"? This action cannot be undone.`,
+      confirmText: 'Delete Customer',
+      type: 'danger',
+      icon: 'trash-2'
+    });
+
+    if (ok) {
       this.http.delete<any>(`${environment.apiUrl}/customers/${customer.id}`).subscribe({
         next: () => {
           this.notificationService.success('Customer deleted.');

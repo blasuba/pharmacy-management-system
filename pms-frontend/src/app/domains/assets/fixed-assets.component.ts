@@ -6,6 +6,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ConfirmationService } from '../../core/services/confirmation.service';
 import { ValidationService } from '../../core/services/validation.service';
 import { PaginationComponent, PaginatePipe } from '../../shared';
 
@@ -964,7 +965,8 @@ export class FixedAssetsComponent implements OnInit {
     private http: HttpClient,
     public authService: AuthService,
     private notificationService: NotificationService,
-    private validationService: ValidationService
+    private validationService: ValidationService,
+    private confirmationService: ConfirmationService
   ) {}
 
   ngOnInit(): void {
@@ -1139,8 +1141,16 @@ export class FixedAssetsComponent implements OnInit {
     }
   }
 
-  deleteAsset(asset: FixedAssetItem): void {
-    if (confirm(`Are you sure you want to permanently delete asset "${asset.name}" (${asset.assetCode})?`)) {
+  async deleteAsset(asset: FixedAssetItem): Promise<void> {
+    const ok = await this.confirmationService.confirm({
+      title: 'Delete Fixed Asset',
+      message: `Are you sure you want to permanently delete asset "${asset.name}" (${asset.assetCode})? This action cannot be undone.`,
+      confirmText: 'Delete Asset',
+      type: 'danger',
+      icon: 'trash-2'
+    });
+
+    if (ok) {
       this.http.delete<any>(`${environment.apiUrl}/assets/${asset.id}`).subscribe({
         next: () => {
           this.notificationService.success('Asset deleted successfully');
@@ -1180,8 +1190,16 @@ export class FixedAssetsComponent implements OnInit {
     });
   }
 
-  returnAsset(asset: FixedAssetItem): void {
-    if (confirm(`Return "${asset.name}" back to general custody?`)) {
+  async returnAsset(asset: FixedAssetItem): Promise<void> {
+    const ok = await this.confirmationService.confirm({
+      title: 'Return Asset Custody',
+      message: `Return "${asset.name}" (${asset.assetCode}) back to general unassigned inventory?`,
+      confirmText: 'Return to Custody',
+      type: 'warning',
+      icon: 'undo-2'
+    });
+
+    if (ok) {
       this.http.post<any>(`${environment.apiUrl}/assets/${asset.id}/return`, {}).subscribe({
         next: () => {
           this.notificationService.success('Asset returned to general custody');

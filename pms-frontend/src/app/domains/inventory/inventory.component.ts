@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { LucideAngularModule } from 'lucide-angular';
 import { NotificationService } from '../../core/services/notification.service';
+import { ConfirmationService } from '../../core/services/confirmation.service';
 import { ValidationService } from '../../core/services/validation.service';
 import { AuthService } from '../../core/auth/services/auth.service';
 import { environment } from '../../../environments/environment';
@@ -1059,6 +1060,7 @@ export class InventoryComponent implements OnInit {
     private http: HttpClient,
     private notificationService: NotificationService,
     private validationService: ValidationService,
+    private confirmationService: ConfirmationService,
     public authService: AuthService
   ) {}
 
@@ -1306,8 +1308,16 @@ export class InventoryComponent implements OnInit {
     }
   }
 
-  confirmDeleteDrug(drug: DrugItem): void {
-    if (confirm(`Are you sure you want to delete ${drug.name}?`)) {
+  async confirmDeleteDrug(drug: DrugItem): Promise<void> {
+    const ok = await this.confirmationService.confirm({
+      title: 'Delete Medication Catalog',
+      message: `Are you sure you want to delete "${drug.name}" (${drug.genericName})? Drugs with active stock cannot be deleted.`,
+      confirmText: 'Delete Medication',
+      type: 'danger',
+      icon: 'trash-2'
+    });
+
+    if (ok) {
       this.http.delete<any>(`${environment.apiUrl}/drugs/${drug.id}`).subscribe({
         next: () => {
           this.notificationService.success('Drug deleted successfully.');
@@ -1392,8 +1402,16 @@ export class InventoryComponent implements OnInit {
     }
   }
 
-  confirmDeleteBatch(batch: BatchItem): void {
-    if (confirm(`Delete batch ${batch.batchNumber}?`)) {
+  async confirmDeleteBatch(batch: BatchItem): Promise<void> {
+    const ok = await this.confirmationService.confirm({
+      title: 'Delete Drug Batch',
+      message: `Are you sure you want to permanently delete batch "${batch.batchNumber}"?`,
+      confirmText: 'Delete Batch',
+      type: 'danger',
+      icon: 'trash-2'
+    });
+
+    if (ok) {
       this.http.delete<any>(`${environment.apiUrl}/batches/${batch.id}`).subscribe({
         next: () => {
           this.notificationService.success('Batch deleted.');
@@ -1506,8 +1524,16 @@ export class InventoryComponent implements OnInit {
     }
   }
 
-  deleteCategory(cat: CategoryItem): void {
-    if (confirm(`Delete category "${cat.name}"?`)) {
+  async deleteCategory(cat: CategoryItem): Promise<void> {
+    const ok = await this.confirmationService.confirm({
+      title: 'Delete Therapeutic Category',
+      message: `Are you sure you want to delete category "${cat.name}"? This may affect drugs linked to this category.`,
+      confirmText: 'Delete Category',
+      type: 'danger',
+      icon: 'trash-2'
+    });
+
+    if (ok) {
       this.http.delete<any>(`${environment.apiUrl}/drugs/categories/${cat.id}`).subscribe({
         next: () => {
           this.notificationService.success('Category deleted.');

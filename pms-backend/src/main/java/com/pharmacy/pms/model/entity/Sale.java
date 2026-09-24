@@ -64,6 +64,12 @@ public class Sale extends BaseEntity {
     @Column(name = "doctor_name", length = 100)
     private String doctorName;
 
+    @Column(name = "refund_status", length = 30)
+    private String refundStatus = "COMPLETED"; // "COMPLETED", "PARTIALLY_REFUNDED", "FULLY_REFUNDED"
+
+    @Column(name = "refunded_amount", precision = 12, scale = 2)
+    private BigDecimal refundedAmount = BigDecimal.ZERO;
+
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SaleItem> items = new ArrayList<>();
 
@@ -112,6 +118,12 @@ public class Sale extends BaseEntity {
 
     public String getDoctorName() { return doctorName; }
     public void setDoctorName(String doctorName) { this.doctorName = doctorName; }
+
+    public String getRefundStatus() { return refundStatus; }
+    public void setRefundStatus(String refundStatus) { this.refundStatus = refundStatus; }
+
+    public BigDecimal getRefundedAmount() { return refundedAmount; }
+    public void setRefundedAmount(BigDecimal refundedAmount) { this.refundedAmount = refundedAmount; }
 
     public List<SaleItem> getItems() { return items; }
     public void setItems(List<SaleItem> items) { this.items = items; }
