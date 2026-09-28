@@ -54,6 +54,7 @@ import {
   Lock,
   Shield,
   ShieldCheck,
+  ShieldAlert,
   Phone,
   Mail,
   Sliders,
@@ -63,6 +64,11 @@ import {
   EyeOff,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
+  Home,
+  Info,
+  HelpCircle,
   X,
   CreditCard,
   Smartphone,
@@ -88,7 +94,16 @@ import {
   Wrench,
   Cpu,
   Layers,
-  Archive
+  Archive,
+  Settings,
+  Database,
+  Upload,
+  Key,
+  Globe,
+  Send,
+  Server,
+  HardDrive,
+  Folder
 } from 'lucide-angular';
 
 export const appConfig: ApplicationConfig = {
@@ -146,6 +161,7 @@ export const appConfig: ApplicationConfig = {
       Lock,
       Shield,
       ShieldCheck,
+      ShieldAlert,
       Phone,
       Mail,
       Sliders,
@@ -155,6 +171,11 @@ export const appConfig: ApplicationConfig = {
       EyeOff,
       ChevronRight,
       ChevronLeft,
+      ChevronDown,
+      ChevronUp,
+      Home,
+      Info,
+      HelpCircle,
       X,
       CreditCard,
       Smartphone,
@@ -180,7 +201,16 @@ export const appConfig: ApplicationConfig = {
       Wrench,
       Cpu,
       Layers,
-      Archive
+      Archive,
+      Settings,
+      Database,
+      Upload,
+      Key,
+      Globe,
+      Send,
+      Server,
+      HardDrive,
+      Folder
     }))
   ]
 };

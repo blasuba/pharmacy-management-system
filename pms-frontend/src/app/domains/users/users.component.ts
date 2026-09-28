@@ -77,7 +77,7 @@ export interface BranchItem {
       </div>
 
       <!-- Users Data Table -->
-      <div class="card" style="padding: 0; overflow: hidden;">
+      <div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--slate-200); box-shadow: var(--shadow-sm);">
         <app-pagination
           [totalItems]="filteredUsers().length"
           [pageSize]="pageSize()"
@@ -85,87 +85,87 @@ export interface BranchItem {
           (pageChange)="page.set($event)"
           (pageSizeChange)="pageSize.set($event); page.set(1)">
         </app-pagination>
-        <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
-            <thead style="background: #f8fafc; border-bottom: 1px solid var(--slate-200); color: var(--slate-600); font-weight: 700;">
+        <div class="table-responsive" style="border: none; border-radius: 0;">
+          <table class="data-table">
+            <thead>
               <tr>
-                <th style="padding: 14px 18px;">Staff Member</th>
-                <th style="padding: 14px 18px;">Username</th>
-                <th style="padding: 14px 18px;">Assigned Role</th>
-                <th style="padding: 14px 18px;">Branch Store</th>
-                <th style="padding: 14px 18px;">Phone</th>
-                <th style="padding: 14px 18px;">Account Status</th>
-                <th style="padding: 14px 18px; text-align: right;">Actions</th>
+                <th style="padding: 10px 16px;">Staff Member</th>
+                <th style="padding: 10px 16px;">Username</th>
+                <th style="padding: 10px 16px;">Assigned Role</th>
+                <th style="padding: 10px 16px;">Branch Store</th>
+                <th style="padding: 10px 16px;">Phone</th>
+                <th style="padding: 10px 16px;">Account Status</th>
+                <th style="padding: 10px 16px; text-align: right;">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let user of (filteredUsers() | paginate: page() : pageSize())" style="border-bottom: 1px solid var(--slate-100); transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+              <tr *ngFor="let user of (filteredUsers() | paginate: page() : pageSize())">
                 <!-- Staff info & avatar -->
-                <td style="padding: 14px 18px;">
-                  <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">
+                <td style="padding: 11px 16px;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 34px; height: 34px; border-radius: 8px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; border: 1px solid #bae6fd;">
                       {{ getInitials(user.fullName) }}
                     </div>
                     <div>
-                      <div style="font-weight: 800; color: var(--slate-900);">{{ user.fullName }}</div>
-                      <div style="font-size: 12px; color: var(--slate-500);">{{ user.email }}</div>
+                      <div style="font-weight: 700; color: var(--slate-900); font-size: 13.5px;">{{ user.fullName }}</div>
+                      <div style="font-size: 12px; color: var(--slate-500); margin-top: 1px;">{{ user.email }}</div>
                     </div>
                   </div>
                 </td>
 
                 <!-- Username -->
-                <td style="padding: 14px 18px; font-weight: 600; color: var(--slate-800);">
-                  <code>&#64;{{ user.username }}</code>
+                <td style="padding: 11px 16px;">
+                  <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; padding: 3px 8px; background: #f1f5f9; border-radius: 5px; border: 1px solid var(--slate-200); color: var(--slate-700);">&#64;{{ user.username }}</code>
                 </td>
 
                 <!-- Assigned Role -->
-                <td style="padding: 14px 18px;">
+                <td style="padding: 11px 16px;">
                   <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-                    <span *ngFor="let role of user.roles" class="badge" [ngClass]="getRoleBadgeClass(role)">
+                    <span *ngFor="let role of user.roles" class="badge" [ngClass]="getRoleBadgeClass(role)" style="padding: 4px 10px; font-size: 11.5px; font-weight: 600; border-radius: 6px;">
                       {{ getRoleLabel(role) }}
                     </span>
                   </div>
                 </td>
 
                 <!-- Branch Store -->
-                <td style="padding: 14px 18px; color: var(--slate-700); font-weight: 500;">
-                  <span style="display: inline-flex; align-items: center; gap: 4px;">
+                <td style="padding: 11px 16px; color: var(--slate-700); font-weight: 500; font-size: 13px;">
+                  <span style="display: inline-flex; align-items: center; gap: 5px;">
                     <lucide-icon name="building-2" [size]="13" color="#64748b"></lucide-icon>
                     {{ user.branchName || 'Main Store' }}
                   </span>
                 </td>
 
                 <!-- Phone -->
-                <td style="padding: 14px 18px; color: var(--slate-600);">
+                <td style="padding: 11px 16px; color: var(--slate-600); font-size: 13px;">
                   {{ user.phone || '-' }}
                 </td>
 
                 <!-- Status -->
-                <td style="padding: 14px 18px;">
-                  <span class="badge" [ngClass]="user.active ? 'badge-success' : 'badge-danger'" style="display: inline-flex; align-items: center; gap: 4px;">
+                <td style="padding: 11px 16px;">
+                  <span class="badge" [ngClass]="user.active ? 'badge-success' : 'badge-danger'" style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; font-size: 11.5px; font-weight: 600;">
                     <lucide-icon [name]="user.active ? 'check-circle-2' : 'alert-circle'" [size]="12"></lucide-icon>
                     {{ user.active ? 'Active' : 'Suspended' }}
                   </span>
                 </td>
 
                 <!-- Actions -->
-                <td style="padding: 14px 18px; text-align: right;">
-                  <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
-                    <button (click)="openEditModal(user)" class="btn btn-outline" style="padding: 5px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" title="Edit details & role">
-                      <lucide-icon name="edit-2" [size]="13"></lucide-icon> Edit
+                <td style="padding: 11px 16px; text-align: right;">
+                  <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
+                    <button (click)="openEditModal(user)" class="btn btn-outline" style="padding: 5px 10px; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;" title="Edit details & role">
+                      <lucide-icon name="edit-2" [size]="12"></lucide-icon> Edit
                     </button>
                     <button (click)="toggleStatus(user)"
                             class="btn btn-outline"
                             [style.color]="user.active ? '#d97706' : '#059669'"
-                            style="padding: 5px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
+                            style="padding: 5px 10px; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;"
                             [title]="user.active ? 'Suspend Account' : 'Reactivate Account'">
-                      <lucide-icon [name]="user.active ? 'pause' : 'play'" [size]="13"></lucide-icon>
+                      <lucide-icon [name]="user.active ? 'pause' : 'play'" [size]="12"></lucide-icon>
                       {{ user.active ? 'Suspend' : 'Activate' }}
                     </button>
                     <button *ngIf="user.username !== 'admin'"
                             (click)="confirmDelete(user)"
                             class="btn btn-outline"
-                            style="padding: 5px 8px; font-size: 12px; color: #ef4444; display: inline-flex; align-items: center;"
+                            style="padding: 5px 8px; font-size: 11.5px; color: #ef4444; display: inline-flex; align-items: center; border-radius: 6px;"
                             title="Delete user permanently">
                       <lucide-icon name="trash-2" [size]="13"></lucide-icon>
                     </button>
@@ -174,8 +174,11 @@ export interface BranchItem {
               </tr>
 
               <tr *ngIf="filteredUsers().length === 0">
-                <td colspan="7" style="text-align: center; padding: 40px; color: var(--slate-400);">
-                  No user accounts matching the search criteria.
+                <td colspan="7" style="text-align: center; padding: 36px 20px; color: var(--slate-400);">
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <lucide-icon name="users" [size]="28" color="#94a3b8"></lucide-icon>
+                    <p style="font-size: 13.5px; font-weight: 600; margin: 0;">No user accounts matching the search criteria.</p>
+                  </div>
                 </td>
               </tr>
             </tbody>

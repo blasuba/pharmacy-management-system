@@ -21,7 +21,8 @@ const ROUTE_MAP: Record<string, { label: string; icon: string }> = {
   'customers': { label: 'Customer Directory & Credit', icon: 'users' },
   'assets': { label: 'Fixed Assets & Hardware', icon: 'monitor' },
   'reports': { label: 'Profit & Financial Analytics', icon: 'bar-chart-3' },
-  'users': { label: 'Staff Accounts & Roles', icon: 'shield-check' }
+  'users': { label: 'Staff Accounts & Roles', icon: 'shield-check' },
+  'settings': { label: 'System Settings & Control', icon: 'settings' }
 };
 
 @Component({

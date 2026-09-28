@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/guards/auth.guard';
+import { superAdminGuard } from './core/auth/guards/super-admin.guard';
 import { ShellComponent } from './domains/shell/shell.component';
 
 export const routes: Routes = [
@@ -51,6 +52,11 @@ export const routes: Routes = [
       { 
         path: 'users', 
         loadComponent: () => import('./domains/users/users.component').then(m => m.UsersComponent) 
+      },
+      { 
+        path: 'settings', 
+        canActivate: [superAdminGuard],
+        loadComponent: () => import('./domains/settings/settings.component').then(m => m.SettingsComponent) 
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

@@ -444,12 +444,14 @@ public class FixedAssetServiceImpl implements FixedAssetService {
         long disposed = 0;
 
         for (FixedAsset a : allAssets) {
-            totalCost = totalCost.add(a.getPurchaseCost() != null ? a.getPurchaseCost() : BigDecimal.ZERO);
-            totalBookValue = totalBookValue.add(a.getCurrentBookValue() != null ? a.getCurrentBookValue() : BigDecimal.ZERO);
-
-            if (a.getStatus() == AssetStatus.ACTIVE) active++;
-            else if (a.getStatus() == AssetStatus.UNDER_MAINTENANCE) underMaint++;
-            else if (a.getStatus() == AssetStatus.DISPOSED || a.getStatus() == AssetStatus.SOLD || a.getStatus() == AssetStatus.LOST) disposed++;
+            if (a.getStatus() == AssetStatus.ACTIVE || a.getStatus() == AssetStatus.UNDER_MAINTENANCE) {
+                totalCost = totalCost.add(a.getPurchaseCost() != null ? a.getPurchaseCost() : BigDecimal.ZERO);
+                totalBookValue = totalBookValue.add(a.getCurrentBookValue() != null ? a.getCurrentBookValue() : BigDecimal.ZERO);
+                if (a.getStatus() == AssetStatus.ACTIVE) active++;
+                else underMaint++;
+            } else {
+                disposed++;
+            }
         }
 
         resp.setTotalPurchaseValue(totalCost);

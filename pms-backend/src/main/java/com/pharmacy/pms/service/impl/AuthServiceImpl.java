@@ -61,4 +61,42 @@ public class AuthServiceImpl implements AuthService {
                 .permissions(permissions)
                 .build();
     }
+
+    @Override
+    public LoginResponse refreshToken(PmsUserPrincipal principal) {
+        if (principal == null) {
+            throw new RuntimeException("Unauthenticated session cannot be refreshed");
+        }
+        User user = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!user.isActive()) {
+            throw new RuntimeException("User account is inactive or deactivated");
+        }
+
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                principal, null, principal.getAuthorities()
+        );
+        String jwt = tokenProvider.generateToken(authentication);
+
+        List<String> roles = user.getRoles().stream()
+                .map(r -> r.getName().name())
+                .toList();
+
+        List<String> permissions = principal.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(auth -> !auth.startsWith("ROLE_"))
+                .toList();
+
+        return LoginResponse.builder()
+                .token(jwt)
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .branchName(principal.getBranchName())
+                .roles(roles)
+                .permissions(permissions)
+                .build();
+    }
 }

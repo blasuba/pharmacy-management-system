@@ -37,6 +37,11 @@ public class DataInitializer implements CommandLineRunner {
     private final SupplierRepository supplierRepository;
     private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PharmacyProfileRepository pharmacyProfileRepository;
+    private final SystemSettingsRepository systemSettingsRepository;
+    private final TaxConfigRepository taxConfigRepository;
+    private final NotificationSettingsRepository notificationSettingsRepository;
+    private final BackupScheduleRepository backupScheduleRepository;
 
     @Value("${app.seed.admin-password:Admin@123}")
     private String initialAdminPassword;
@@ -51,7 +56,12 @@ public class DataInitializer implements CommandLineRunner {
                            PermissionRepository permissionRepository, BranchRepository branchRepository,
                            CategoryRepository categoryRepository, DrugRepository drugRepository,
                            DrugBatchRepository batchRepository, SupplierRepository supplierRepository,
-                           CustomerRepository customerRepository, PasswordEncoder passwordEncoder) {
+                           CustomerRepository customerRepository, PasswordEncoder passwordEncoder,
+                           PharmacyProfileRepository pharmacyProfileRepository,
+                           SystemSettingsRepository systemSettingsRepository,
+                           TaxConfigRepository taxConfigRepository,
+                           NotificationSettingsRepository notificationSettingsRepository,
+                           BackupScheduleRepository backupScheduleRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
@@ -62,11 +72,18 @@ public class DataInitializer implements CommandLineRunner {
         this.supplierRepository = supplierRepository;
         this.customerRepository = customerRepository;
         this.passwordEncoder = passwordEncoder;
+        this.pharmacyProfileRepository = pharmacyProfileRepository;
+        this.systemSettingsRepository = systemSettingsRepository;
+        this.taxConfigRepository = taxConfigRepository;
+        this.notificationSettingsRepository = notificationSettingsRepository;
+        this.backupScheduleRepository = backupScheduleRepository;
     }
 
     @Override
     @Transactional
     public void run(String... args) {
+        initDefaultSettingsIfMissing();
+
         if (userRepository.count() > 0) {
             return; // Already initialized
         }
@@ -82,10 +99,11 @@ public class DataInitializer implements CommandLineRunner {
         Permission p8 = permissionRepository.save(new Permission("REPORT_PROFIT_VIEW", "View profit & loss reports", MODULE_REPORTS));
         Permission p9 = permissionRepository.save(new Permission("USER_MANAGE", "Manage staff accounts & roles", MODULE_ADMIN));
         Permission p10 = permissionRepository.save(new Permission("SUPPLIER_MANAGE", "Manage suppliers", MODULE_PROCUREMENT));
+        Permission p11 = permissionRepository.save(new Permission("SETTINGS_MANAGE", "Manage system configurations and settings", MODULE_ADMIN));
 
         // 2. Create Roles
         Role ownerRole = new Role(UserRole.ROLE_OWNER, "Owner / Super Admin", "Full system access");
-        ownerRole.setPermissions(new HashSet<>(Set.of(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10)));
+        ownerRole.setPermissions(new HashSet<>(Set.of(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11)));
         roleRepository.save(ownerRole);
 
         Role pharmacistRole = new Role(UserRole.ROLE_PHARMACIST, "Pharmacist", "Dispense, manage batches and stock");
@@ -257,5 +275,76 @@ public class DataInitializer implements CommandLineRunner {
         b4.setWholesalePrice(BigDecimal.valueOf(375.00));
         b4.setDistributorPrice(BigDecimal.valueOf(350.00));
         batchRepository.save(b4);
+    }
+
+    private void initDefaultSettingsIfMissing() {
+        if (pharmacyProfileRepository.count() == 0) {
+            PharmacyProfile p = new PharmacyProfile();
+            p.setName("Bunna Pharmacy");
+            p.setLegalName("Bunna Pharmacy PLC");
+            p.setAddress("Bole Road, Addis Ababa, Ethiopia");
+            p.setPhone("+251-11-123-4567");
+            p.setEmail("info@bunnapharmacy.com");
+            p.setTin("1234567890");
+            p.setLicenseNumber("PH-2026-00123");
+            p.setLicenseExpiry(LocalDate.now().plusYears(2));
+            p.setWebsite("https://bunnapharmacy.com");
+            pharmacyProfileRepository.save(p);
+        }
+
+        if (systemSettingsRepository.count() == 0) {
+            SystemSettings s = new SystemSettings();
+            s.setCurrency("ETB");
+            s.setCurrencySymbol("Br");
+            s.setDateFormat("DD/MM/YYYY");
+            s.setTimeZone("Africa/Addis_Ababa");
+            s.setLanguage("en");
+            s.setReceiptFooter("Thank you! Get well soon!");
+            s.setReceiptPrinter("PDF");
+            s.setLowStockThreshold(20);
+            s.setExpiryAlertDays(30);
+            systemSettingsRepository.save(s);
+        }
+
+        if (taxConfigRepository.count() == 0) {
+            TaxConfig tc = new TaxConfig();
+            tc.setVatRate(new BigDecimal("15.00"));
+            tc.setTaxInclusive(false);
+            tc.setTaxRegistrationNumber("TIN-1234567890");
+            tc.setDefaultTaxCode("VAT-15");
+            tc.setTaxExemptCategories("Essential Drugs, Insulin");
+            taxConfigRepository.save(tc);
+        }
+
+        if (notificationSettingsRepository.count() == 0) {
+            NotificationSettings ns = new NotificationSettings();
+            ns.setEmailEnabled(false);
+            ns.setSmsEnabled(false);
+            ns.setTelegramEnabled(false);
+            ns.setLowStockAlertEnabled(true);
+            ns.setExpiryAlertEnabled(true);
+            ns.setDailyReportEnabled(false);
+            notificationSettingsRepository.save(ns);
+        }
+
+        if (backupScheduleRepository.count() == 0) {
+            BackupSchedule bs = new BackupSchedule();
+            bs.setFrequency("DAILY");
+            bs.setRetentionDays(30);
+            backupScheduleRepository.save(bs);
+        }
+
+        Permission settingsManagePerm = permissionRepository.findByCode("SETTINGS_MANAGE")
+                .orElseGet(() -> permissionRepository.save(new Permission("SETTINGS_MANAGE", "Manage system configurations and settings", MODULE_ADMIN)));
+
+        roleRepository.findByName(UserRole.ROLE_OWNER).ifPresent(owner -> {
+            if (owner.getPermissions() == null) {
+                owner.setPermissions(new HashSet<>());
+            }
+            if (!owner.getPermissions().contains(settingsManagePerm)) {
+                owner.getPermissions().add(settingsManagePerm);
+                roleRepository.save(owner);
+            }
+        });
     }
 }

@@ -1,6 +1,7 @@
 package com.pharmacy.pms.security;
 
 import com.pharmacy.pms.model.entity.User;
+import com.pharmacy.pms.model.enums.UserRole;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -64,6 +65,12 @@ public class PmsUserPrincipal implements UserDetails {
         if (user.getRoles() != null) {
             user.getRoles().forEach(role -> {
                 authorities.add(new SimpleGrantedAuthority(role.getName().name()));
+                if (role.getName() == UserRole.ROLE_OWNER) {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"));
+                    authorities.add(new SimpleGrantedAuthority("SUPER_ADMIN"));
+                    authorities.add(new SimpleGrantedAuthority("SETTINGS_MANAGE"));
+                    authorities.add(new SimpleGrantedAuthority("USER_MANAGE"));
+                }
                 if (role.getPermissions() != null) {
                     role.getPermissions().forEach(permission ->
                         authorities.add(new SimpleGrantedAuthority(permission.getCode()))

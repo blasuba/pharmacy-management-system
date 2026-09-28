@@ -1,7 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../../../core/auth/services/auth.service';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -13,12 +13,22 @@ import { NotificationService } from '../../../../core/services/notification.serv
   template: `
     <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0f172a 0%, #075985 100%); padding: 20px;">
       <div style="width: 100%; max-width: 440px; background: #ffffff; border-radius: 16px; padding: 40px; box-shadow: var(--shadow-lg);">
-        <div style="text-align: center; margin-bottom: 30px;">
+        <div style="text-align: center; margin-bottom: 24px;">
           <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); color: #0284c7; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.2);">
             <lucide-icon name="pill" [size]="32" color="#0284c7"></lucide-icon>
           </div>
           <h1 style="font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">Apex Central Pharmacy</h1>
           <p style="font-size: 13px; color: #64748b; margin-top: 4px;">Sign in to access your pharmacy operations terminal</p>
+        </div>
+
+        <!-- Inactivity / Session Notice Banner -->
+        <div *ngIf="timeoutReason()" 
+             style="margin-bottom: 20px; padding: 12px 16px; border-radius: 10px; background: #fef3c7; border: 1px solid #fde68a; display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: #92400e;">
+          <lucide-icon name="clock" [size]="18" color="#d97706" style="flex-shrink: 0;"></lucide-icon>
+          <div>
+            <strong>Session Disconnected:</strong>
+            {{ timeoutReason() === 'idle_timeout' ? ' You were logged out due to inactivity for terminal security.' : ' Your session has expired. Please sign in again.' }}
+          </div>
         </div>
 
         <form (ngSubmit)="handleLogin()">
@@ -57,16 +67,25 @@ import { NotificationService } from '../../../../core/services/notification.serv
     </div>
   `
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   username = '';
   password = '';
   loading = signal(false);
+  timeoutReason = signal<string | null>(null);
 
   constructor(
     private authService: AuthService,
     private notificationService: NotificationService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
+
+  ngOnInit(): void {
+    const reason = this.route.snapshot.queryParamMap.get('reason');
+    if (reason) {
+      this.timeoutReason.set(reason);
+    }
+  }
 
   handleLogin(): void {
     if (!this.username || !this.password) {

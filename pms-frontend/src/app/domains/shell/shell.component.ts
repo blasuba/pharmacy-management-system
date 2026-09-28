@@ -4,8 +4,11 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../core/auth/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { SettingsService } from '../../core/services/settings.service';
 import { BreadcrumbsComponent } from '../../shared/ui/breadcrumbs/breadcrumbs.component';
 import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog/confirm-dialog.component';
+import { SessionTimeoutModalComponent } from '../../shared/ui/session-timeout-modal/session-timeout-modal.component';
+import { InactivityService } from '../../core/services/inactivity.service';
 
 @Component({
   selector: 'app-shell',
@@ -17,7 +20,8 @@ import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog/confirm-d
     RouterLinkActive, 
     LucideAngularModule,
     BreadcrumbsComponent,
-    ConfirmDialogComponent
+    ConfirmDialogComponent,
+    SessionTimeoutModalComponent
   ],
   template: `
     <div style="display: flex; min-height: 100vh; background: #f8fafc;">
@@ -25,11 +29,14 @@ import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog/confirm-d
       <aside style="width: 260px; background: #0f172a; color: #f8fafc; display: flex; flex-direction: column; flex-shrink: 0; border-right: 1px solid #1e293b;">
         <!-- Logo Header -->
         <div style="padding: 22px 20px; border-bottom: 1px solid #1e293b; display: flex; align-items: center; gap: 12px;">
-          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);">
-            <lucide-icon name="pill" [size]="22" color="#ffffff"></lucide-icon>
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4); overflow: hidden;">
+            <img *ngIf="settingsService.profile()?.logoPath" [src]="settingsService.profile()?.logoPath" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" />
+            <lucide-icon *ngIf="!settingsService.profile()?.logoPath" name="pill" [size]="22" color="#ffffff"></lucide-icon>
           </div>
-          <div>
-            <h2 style="font-size: 16px; font-weight: 800; color: #fff; line-height: 1.2; letter-spacing: -0.3px;">Apex PMS</h2>
+          <div style="min-width: 0;">
+            <h2 style="font-size: 15px; font-weight: 800; color: #fff; line-height: 1.2; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              {{ settingsService.profile()?.name || 'Bunna PMS' }}
+            </h2>
             <p style="font-size: 11px; color: #38bdf8; font-weight: 600;">Enterprise Pharmacy</p>
           </div>
         </div>
@@ -86,6 +93,11 @@ import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog/confirm-d
             <lucide-icon name="users" [size]="17" color="#93c5fd"></lucide-icon>
             <span>Users & Staff</span>
           </a>
+          <a *ngIf="authService.hasRole('ROLE_OWNER') || authService.hasRole('SUPER_ADMIN') || authService.hasPermission('SETTINGS_MANAGE')"
+             routerLink="/settings" routerLinkActive="active-nav" class="nav-item">
+            <lucide-icon name="settings" [size]="17" color="#38bdf8"></lucide-icon>
+            <span>Settings</span>
+          </a>
         </nav>
 
         <!-- User Profile Card -->
@@ -116,7 +128,7 @@ import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog/confirm-d
             </span>
             <span style="font-size: 12px; color: var(--slate-500); display: inline-flex; align-items: center; gap: 6px;">
               <lucide-icon name="shield-check" [size]="14" color="#059669"></lucide-icon>
-              License: PH-ET-2026-88910
+              License: {{ settingsService.profile()?.licenseNumber || 'PH-ET-2026-88910' }}
             </span>
           </div>
 
@@ -140,6 +152,9 @@ import { ConfirmDialogComponent } from '../../shared/ui/confirm-dialog/confirm-d
 
     <!-- Global Shared Confirmation Modal Host -->
     <app-confirm-dialog></app-confirm-dialog>
+
+    <!-- Global Session Inactivity Timeout Modal Host -->
+    <app-session-timeout-modal></app-session-timeout-modal>
 
     <!-- Toast Notifications Overlay -->
     <div style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; max-width: 360px;">
@@ -189,6 +204,8 @@ export class ShellComponent {
 
   constructor(
     public authService: AuthService,
-    public notificationService: NotificationService
+    public notificationService: NotificationService,
+    public settingsService: SettingsService,
+    public inactivityService: InactivityService
   ) {}
 }

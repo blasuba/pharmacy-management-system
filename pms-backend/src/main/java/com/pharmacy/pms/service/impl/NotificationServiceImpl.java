@@ -44,6 +44,10 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public Announcement createAnnouncement(String title, String message, NotificationType type, String priority) {
+        return saveAndBroadcastAnnouncement(title, message, type, priority);
+    }
+
+    private Announcement saveAndBroadcastAnnouncement(String title, String message, NotificationType type, String priority) {
         Announcement announcement = new Announcement(title, message, type, priority);
         Announcement saved = announcementRepository.save(announcement);
         try {
@@ -64,7 +68,7 @@ public class NotificationServiceImpl implements NotificationService {
         List<DrugBatch> expiring = batchRepository.findBatchesExpiringBetween(today, today.plusDays(30));
         for (DrugBatch b : expiring) {
             String msg = "Batch " + b.getBatchNumber() + " of " + b.getDrug().getName() + " expires on " + b.getExpiryDate() + " (" + b.getQuantityOnHand() + " units remaining)";
-            createAnnouncement("Drug Expiry Alert", msg, NotificationType.EXPIRY_WARNING, "HIGH");
+            saveAndBroadcastAnnouncement("Drug Expiry Alert", msg, NotificationType.EXPIRY_WARNING, "HIGH");
         }
 
         // 2. Low stock alerts
@@ -73,7 +77,7 @@ public class NotificationServiceImpl implements NotificationService {
             int stock = batchRepository.getTotalAvailableStockForDrug(d.getId(), today);
             if (stock <= d.getReorderThreshold()) {
                 String msg = d.getName() + " is running low! Current stock: " + stock + " (Reorder threshold: " + d.getReorderThreshold() + ")";
-                createAnnouncement("Low Stock Warning", msg, NotificationType.LOW_STOCK, "MEDIUM");
+                saveAndBroadcastAnnouncement("Low Stock Warning", msg, NotificationType.LOW_STOCK, "MEDIUM");
             }
         }
     }

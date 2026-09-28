@@ -28,11 +28,25 @@ export class AuthService {
     );
   }
 
-  logout(): void {
+  refreshToken(): Observable<ApiResponse<LoginResponse>> {
+    return this.http.post<ApiResponse<LoginResponse>>(`${this.apiUrl}/refresh`, {}).pipe(
+      tap(res => {
+        if (res.success && res.data) {
+          this.setSession(res.data);
+        }
+      })
+    );
+  }
+
+  logout(reason?: string): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
     this.currentUser.set(null);
-    this.router.navigate(['/login']);
+    if (reason) {
+      this.router.navigate(['/login'], { queryParams: { reason } });
+    } else {
+      this.router.navigate(['/login']);
+    }
   }
 
   getToken(): string | null {

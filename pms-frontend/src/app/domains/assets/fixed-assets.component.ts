@@ -140,17 +140,17 @@ export interface DashboardMetrics {
       <!-- KPI Summary Cards -->
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
         <div class="kpi-card" style="border-left: 4px solid #3b82f6;">
-          <div class="kpi-title">Total Capital Assets</div>
+          <div class="kpi-title">Total Registered Assets</div>
           <div class="kpi-value">{{ metrics()?.totalAssetsCount || assets().length }}</div>
-          <div class="kpi-subtext">Active: {{ metrics()?.activeAssetsCount || 0 }} | Disposed: {{ metrics()?.disposedAssetsCount || 0 }}</div>
+          <div class="kpi-subtext">Active: {{ metrics()?.activeAssetsCount || 0 }} | Sold/Disposed: {{ metrics()?.disposedAssetsCount || 0 }}</div>
         </div>
         <div class="kpi-card" style="border-left: 4px solid #10b981;">
-          <div class="kpi-title">Total Purchase Cost</div>
+          <div class="kpi-title">Active Capital Investment</div>
           <div class="kpi-value">ETB {{ (metrics()?.totalPurchaseValue || totalAcquisitionCost()) | number:'1.2-2' }}</div>
-          <div class="kpi-subtext">Historical acquisition value</div>
+          <div class="kpi-subtext">Acquisition cost of in-service assets</div>
         </div>
         <div class="kpi-card" style="border-left: 4px solid #8b5cf6;">
-          <div class="kpi-title">Current Net Book Value</div>
+          <div class="kpi-title">Active Net Book Value</div>
           <div class="kpi-value">ETB {{ (metrics()?.totalCurrentBookValue || totalCurrentBookValue()) | number:'1.2-2' }}</div>
           <div class="kpi-subtext">After straight-line depreciation</div>
         </div>
@@ -954,11 +954,15 @@ export class FixedAssetsComponent implements OnInit {
   };
 
   totalAcquisitionCost = computed(() => {
-    return this.assets().reduce((sum, a) => sum + (Number(a.purchaseCost) || 0), 0);
+    return this.assets()
+      .filter(a => a.status === 'ACTIVE' || a.status === 'UNDER_MAINTENANCE')
+      .reduce((sum, a) => sum + (Number(a.purchaseCost) || 0), 0);
   });
 
   totalCurrentBookValue = computed(() => {
-    return this.assets().reduce((sum, a) => sum + (Number(a.currentBookValue) || 0), 0);
+    return this.assets()
+      .filter(a => a.status === 'ACTIVE' || a.status === 'UNDER_MAINTENANCE')
+      .reduce((sum, a) => sum + (Number(a.currentBookValue) || 0), 0);
   });
 
   constructor(
@@ -1094,32 +1098,55 @@ export class FixedAssetsComponent implements OnInit {
     this.assetForm = {
       name: asset.name,
       category: asset.category,
-      description: asset.description,
+      description: asset.description || '',
       purchaseDate: asset.purchaseDate,
       purchaseCost: asset.purchaseCost,
       supplierId: asset.supplierId,
-      location: asset.location,
-      serialNumber: asset.serialNumber,
-      warrantyExpiry: asset.warrantyExpiry,
+      location: asset.location || '',
+      serialNumber: asset.serialNumber || '',
+      warrantyExpiry: asset.warrantyExpiry || '',
       usefulLifeYears: asset.usefulLifeYears,
-      salvageValue: asset.salvageValue,
-      depreciationMethod: asset.depreciationMethod
+      salvageValue: asset.salvageValue || 0,
+      depreciationMethod: asset.depreciationMethod || 'STRAIGHT_LINE'
     };
     this.showAssetModal.set(true);
   }
 
   saveAsset(): void {
-    if (!this.assetForm.name.trim()) {
+    if (!this.assetForm.name?.trim()) {
       this.notificationService.warning('Asset name is required');
       return;
     }
-    if (!this.assetForm.purchaseCost || this.assetForm.purchaseCost <= 0) {
+    if (!this.assetForm.purchaseDate) {
+      this.notificationService.warning('Purchase date is required');
+      return;
+    }
+    if (!this.assetForm.purchaseCost || Number(this.assetForm.purchaseCost) <= 0) {
       this.notificationService.warning('Purchase cost must be greater than zero');
       return;
     }
+    if (!this.assetForm.usefulLifeYears || Number(this.assetForm.usefulLifeYears) < 1) {
+      this.notificationService.warning('Useful life must be at least 1 year');
+      return;
+    }
+
+    const payload = {
+      name: this.assetForm.name.trim(),
+      category: this.assetForm.category,
+      description: this.assetForm.description?.trim() || null,
+      purchaseDate: this.assetForm.purchaseDate,
+      purchaseCost: Number(this.assetForm.purchaseCost),
+      supplierId: this.assetForm.supplierId ? Number(this.assetForm.supplierId) : null,
+      location: this.assetForm.location?.trim() || null,
+      serialNumber: this.assetForm.serialNumber?.trim() || null,
+      warrantyExpiry: this.assetForm.warrantyExpiry?.trim() ? this.assetForm.warrantyExpiry : null,
+      usefulLifeYears: Number(this.assetForm.usefulLifeYears) || 1,
+      salvageValue: Number(this.assetForm.salvageValue) || 0,
+      depreciationMethod: this.assetForm.depreciationMethod || 'STRAIGHT_LINE'
+    };
 
     if (this.isEditingAsset() && this.editingAssetId) {
-      this.http.put<any>(`${environment.apiUrl}/assets/${this.editingAssetId}`, this.assetForm).subscribe({
+      this.http.put<any>(`${environment.apiUrl}/assets/${this.editingAssetId}`, payload).subscribe({
         next: () => {
           this.notificationService.success('Asset updated successfully');
           this.showAssetModal.set(false);
@@ -1129,7 +1156,7 @@ export class FixedAssetsComponent implements OnInit {
         error: (err) => this.notificationService.error(err.error?.message || 'Failed to update asset')
       });
     } else {
-      this.http.post<any>(`${environment.apiUrl}/assets`, this.assetForm).subscribe({
+      this.http.post<any>(`${environment.apiUrl}/assets`, payload).subscribe({
         next: () => {
           this.notificationService.success('Fixed asset registered successfully');
           this.showAssetModal.set(false);
@@ -1244,12 +1271,24 @@ export class FixedAssetsComponent implements OnInit {
       this.notificationService.warning('Please select an asset');
       return;
     }
-    if (!this.maintenanceForm.description.trim()) {
+    if (!this.maintenanceForm.description?.trim()) {
       this.notificationService.warning('Maintenance description is required');
       return;
     }
+    if (!this.maintenanceForm.maintenanceDate) {
+      this.notificationService.warning('Maintenance service date is required');
+      return;
+    }
 
-    this.http.post<any>(`${environment.apiUrl}/assets/${assetId}/maintenance`, this.maintenanceForm).subscribe({
+    const payload = {
+      maintenanceDate: this.maintenanceForm.maintenanceDate,
+      description: this.maintenanceForm.description.trim(),
+      cost: Number(this.maintenanceForm.cost) || 0,
+      performedBy: this.maintenanceForm.performedBy?.trim() || null,
+      nextMaintenanceDate: this.maintenanceForm.nextMaintenanceDate?.trim() ? this.maintenanceForm.nextMaintenanceDate : null
+    };
+
+    this.http.post<any>(`${environment.apiUrl}/assets/${assetId}/maintenance`, payload).subscribe({
       next: () => {
         this.notificationService.success('Maintenance record logged');
         this.showMaintenanceModal.set(false);
@@ -1298,11 +1337,23 @@ export class FixedAssetsComponent implements OnInit {
 
   saveDisposal(): void {
     if (!this.selectedAsset()) return;
-    if (!this.disposeForm.reason.trim()) {
+    if (!this.disposeForm.reason?.trim()) {
       this.notificationService.warning('Disposal reason is required');
       return;
     }
-    this.http.post<any>(`${environment.apiUrl}/assets/${this.selectedAsset()!.id}/dispose`, this.disposeForm).subscribe({
+    if (!this.disposeForm.disposalDate) {
+      this.notificationService.warning('Disposal date is required');
+      return;
+    }
+
+    const payload = {
+      disposalDate: this.disposeForm.disposalDate,
+      disposalType: this.disposeForm.disposalType,
+      salePrice: Number(this.disposeForm.salePrice) || 0,
+      reason: this.disposeForm.reason.trim()
+    };
+
+    this.http.post<any>(`${environment.apiUrl}/assets/${this.selectedAsset()!.id}/dispose`, payload).subscribe({
       next: () => {
         this.notificationService.success('Asset disposed & gain/loss recorded');
         this.showDisposeModal.set(false);

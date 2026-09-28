@@ -27,7 +27,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class PosServiceImpl implements PosService {
@@ -40,12 +40,14 @@ public class PosServiceImpl implements PosService {
     private final UserRepository userRepository;
     private final InventoryService inventoryService;
     private final CashManagementService cashManagementService;
+    private final TaxConfigRepository taxConfigRepository;
 
     public PosServiceImpl(SaleRepository saleRepository, SaleItemRepository saleItemRepository,
                           DrugRepository drugRepository, DrugBatchRepository batchRepository,
                           CustomerRepository customerRepository, UserRepository userRepository,
                           InventoryService inventoryService,
-                          CashManagementService cashManagementService) {
+                          CashManagementService cashManagementService,
+                          TaxConfigRepository taxConfigRepository) {
         this.saleRepository = saleRepository;
         this.saleItemRepository = saleItemRepository;
         this.drugRepository = drugRepository;
@@ -54,6 +56,7 @@ public class PosServiceImpl implements PosService {
         this.userRepository = userRepository;
         this.inventoryService = inventoryService;
         this.cashManagementService = cashManagementService;
+        this.taxConfigRepository = taxConfigRepository;
     }
 
     @Override
@@ -82,14 +85,52 @@ public class PosServiceImpl implements PosService {
 
         BigDecimal overallDiscount = request.getOverallDiscount() != null ? request.getOverallDiscount() : BigDecimal.ZERO;
         BigDecimal grandDiscount = totalItemDiscount.add(overallDiscount);
-        BigDecimal grandTotal = subtotal.subtract(grandDiscount).max(BigDecimal.ZERO);
+
+        TaxConfig taxConfig = taxConfigRepository.findFirstByOrderByIdAsc().orElse(null);
+        BigDecimal vatRate = (taxConfig != null && taxConfig.getVatRate() != null) ? taxConfig.getVatRate() : BigDecimal.ZERO;
+        boolean isTaxInclusive = taxConfig != null && Boolean.TRUE.equals(taxConfig.getTaxInclusive());
+
+        Set<String> exemptCategories = new HashSet<>();
+        if (taxConfig != null && taxConfig.getTaxExemptCategories() != null && !taxConfig.getTaxExemptCategories().isBlank()) {
+            exemptCategories.addAll(Arrays.stream(taxConfig.getTaxExemptCategories().split(","))
+                    .map(String::trim)
+                    .map(String::toLowerCase)
+                    .filter(s -> !s.isEmpty())
+                    .toList());
+        }
+
+        BigDecimal taxableSubtotal = BigDecimal.ZERO;
+        for (SaleItem item : saleItems) {
+            String catName = (item.getDrugBatch() != null && item.getDrugBatch().getDrug() != null && item.getDrugBatch().getDrug().getCategory() != null)
+                    ? item.getDrugBatch().getDrug().getCategory().getName().toLowerCase().trim() : "";
+            if (!exemptCategories.contains(catName)) {
+                taxableSubtotal = taxableSubtotal.add(item.getSubtotal());
+            }
+        }
+
+        BigDecimal taxAmount = BigDecimal.ZERO;
+        BigDecimal grandTotal;
+
+        if (vatRate.compareTo(BigDecimal.ZERO) > 0 && taxableSubtotal.compareTo(BigDecimal.ZERO) > 0) {
+            if (isTaxInclusive) {
+                BigDecimal divisor = BigDecimal.ONE.add(vatRate.divide(new BigDecimal("100"), 4, java.math.RoundingMode.HALF_UP));
+                BigDecimal amountWithoutTax = taxableSubtotal.divide(divisor, 2, java.math.RoundingMode.HALF_UP);
+                taxAmount = taxableSubtotal.subtract(amountWithoutTax);
+                grandTotal = subtotal.subtract(grandDiscount).max(BigDecimal.ZERO);
+            } else {
+                taxAmount = taxableSubtotal.multiply(vatRate).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+                grandTotal = subtotal.subtract(grandDiscount).add(taxAmount).max(BigDecimal.ZERO);
+            }
+        } else {
+            grandTotal = subtotal.subtract(grandDiscount).max(BigDecimal.ZERO);
+        }
 
         BigDecimal paid = request.getPaidAmount() != null ? request.getPaidAmount() : grandTotal;
         BigDecimal change = handleCustomerCredit(request.getPaymentMethod(), customer, grandTotal, paid);
 
         sale.setSubtotal(subtotal);
         sale.setDiscountAmount(grandDiscount);
-        sale.setTaxAmount(BigDecimal.ZERO);
+        sale.setTaxAmount(taxAmount);
         sale.setGrandTotal(grandTotal);
         sale.setPaidAmount(paid);
         sale.setChangeAmount(change);
