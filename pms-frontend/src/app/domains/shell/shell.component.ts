@@ -62,6 +62,10 @@ import { InactivityService } from '../../core/services/inactivity.service';
             <lucide-icon name="circle-dollar-sign" [size]="17" color="#34d399"></lucide-icon>
             <span>Cash Register & Shifts</span>
           </a>
+          <a routerLink="/expenses" routerLinkActive="active-nav" class="nav-item">
+            <lucide-icon name="wallet" [size]="17" color="#fbbf24"></lucide-icon>
+            <span>Operating Expenses</span>
+          </a>
 
           <div class="nav-section-title" style="margin-top: 10px;">INVENTORY & SUPPLY</div>
           <a routerLink="/inventory" routerLinkActive="active-nav" class="nav-item">
@@ -155,18 +159,6 @@ import { InactivityService } from '../../core/services/inactivity.service';
 
     <!-- Global Session Inactivity Timeout Modal Host -->
     <app-session-timeout-modal></app-session-timeout-modal>
-
-    <!-- Toast Notifications Overlay -->
-    <div style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; max-width: 360px;">
-      <div *ngFor="let notif of notificationService.notifications()"
-           [style.border-left]="notif.type === 'success' ? '4px solid #10b981' : (notif.type === 'error' ? '4px solid #ef4444' : '4px solid #f59e0b')"
-           style="min-width: 260px; padding: 12px 16px; border-radius: 8px; background: #0f172a; color: #fff; box-shadow: var(--shadow-lg); font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: space-between;">
-        <span>{{ notif.message }}</span>
-        <button (click)="notificationService.remove(notif.id)" style="background: none; border: none; color: #94a3b8; cursor: pointer; margin-left: 10px; display: flex; align-items: center;">
-          <lucide-icon name="x" [size]="14"></lucide-icon>
-        </button>
-      </div>
-    </div>
   `,
   styles: [`
     .nav-section-title {

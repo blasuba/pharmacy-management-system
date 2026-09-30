@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Component
@@ -334,17 +335,55 @@ public class DataInitializer implements CommandLineRunner {
             backupScheduleRepository.save(bs);
         }
 
-        Permission settingsManagePerm = permissionRepository.findByCode("SETTINGS_MANAGE")
-                .orElseGet(() -> permissionRepository.save(new Permission("SETTINGS_MANAGE", "Manage system configurations and settings", MODULE_ADMIN)));
+        // Idempotently ensure all module permissions are registered
+        List<Permission> requiredPermissions = List.of(
+                // Inventory
+                new Permission("DRUG_READ", "View drug catalog and stock balances", "INVENTORY"),
+                new Permission("DRUG_CREATE", "Register new pharmaceutical products", "INVENTORY"),
+                new Permission("DRUG_EDIT", "Update drug details, prices and categories", "INVENTORY"),
+                new Permission("BATCH_MANAGE", "Manage FEFO batches, serial numbers & costs", "INVENTORY"),
+                new Permission("INVENTORY_ADJUST", "Perform stock write-offs and quantity adjustments", "INVENTORY"),
+                // POS & Sales
+                new Permission("POS_CHECKOUT", "Process point-of-sale customer checkouts", "POS"),
+                new Permission("POS_REFUND", "Authorize customer refunds and returns", "POS"),
+                // Finance & Expenses
+                new Permission("EXPENSE_VIEW", "View pharmacy operational expense records", "FINANCE"),
+                new Permission("EXPENSE_MANAGE", "Create, edit and manage operational expenses", "FINANCE"),
+                // Procurement
+                new Permission("PURCHASE_MANAGE", "Create and edit purchase orders", "PROCUREMENT"),
+                new Permission("PURCHASE_RECEIVE", "Receive goods (GRN) and update stock batches", "PROCUREMENT"),
+                new Permission("SUPPLIER_MANAGE", "Manage pharmaceutical suppliers and vendors", "PROCUREMENT"),
+                // Customers
+                new Permission("CUSTOMER_VIEW", "View customer records and credit status", "CUSTOMERS"),
+                new Permission("CUSTOMER_MANAGE", "Manage customer profiles and credit limits", "CUSTOMERS"),
+                // Fixed Assets
+                new Permission("ASSET_VIEW", "View pharmacy fixed assets and depreciation", "FIXED_ASSETS"),
+                new Permission("ASSET_MANAGE", "Register and maintain equipment and fixed assets", "FIXED_ASSETS"),
+                // Cash & Shift Management
+                new Permission("CASH_SHIFT_MANAGE", "Open, reconcile and close cashier shifts", "CASH_MANAGEMENT"),
+                new Permission("CASH_DRAWER_VIEW", "View shift transaction logs and drawer balances", "CASH_MANAGEMENT"),
+                // Reports & Analytics
+                new Permission("REPORT_PROFIT_VIEW", "Access profit & loss and revenue analytics", "REPORTS"),
+                new Permission("REPORT_SALES_VIEW", "Access detailed sales and item volume reports", "REPORTS"),
+                new Permission("REPORT_AUDIT_VIEW", "Access audit logs and compliance trails", "REPORTS"),
+                // Admin
+                new Permission("USER_MANAGE", "Manage staff accounts, roles and passwords", "ADMIN"),
+                new Permission("SETTINGS_MANAGE", "Manage system configurations and settings", "ADMIN")
+        );
+
+        Set<Permission> allPerms = new HashSet<>();
+        for (Permission perm : requiredPermissions) {
+            Permission p = permissionRepository.findByCode(perm.getCode())
+                    .orElseGet(() -> permissionRepository.save(perm));
+            allPerms.add(p);
+        }
 
         roleRepository.findByName(UserRole.ROLE_OWNER).ifPresent(owner -> {
             if (owner.getPermissions() == null) {
                 owner.setPermissions(new HashSet<>());
             }
-            if (!owner.getPermissions().contains(settingsManagePerm)) {
-                owner.getPermissions().add(settingsManagePerm);
-                roleRepository.save(owner);
-            }
+            owner.getPermissions().addAll(allPerms);
+            roleRepository.save(owner);
         });
     }
 }

@@ -42,11 +42,30 @@ public class PurchaseController {
         return ResponseEntity.ok(ApiResponse.success(created, "Purchase order created successfully"));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_OWNER') or hasAuthority('ROLE_PHARMACIST') or hasAuthority('PURCHASE_RECEIVE')")
+    public ResponseEntity<ApiResponse<PurchaseOrder>> updatePurchaseOrder(
+            @PathVariable Long id,
+            @Valid @RequestBody PurchaseOrderCreateRequest request,
+            @AuthenticationPrincipal PmsUserPrincipal principal) {
+        PurchaseOrder updated = purchaseService.updatePurchaseOrder(id, request, principal != null ? principal.getId() : null);
+        return ResponseEntity.ok(ApiResponse.success(updated, "Purchase order updated successfully"));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_OWNER') or hasAuthority('ROLE_PHARMACIST') or hasAuthority('PURCHASE_RECEIVE')")
+    public ResponseEntity<ApiResponse<Void>> deletePurchaseOrder(
+            @PathVariable Long id,
+            @AuthenticationPrincipal PmsUserPrincipal principal) {
+        purchaseService.deletePurchaseOrder(id, principal != null ? principal.getId() : null);
+        return ResponseEntity.ok(ApiResponse.success(null, "Purchase order deleted successfully"));
+    }
+
     @PostMapping("/{id}/receive")
     @PreAuthorize("hasAuthority('ROLE_OWNER') or hasAuthority('ROLE_PHARMACIST') or hasAuthority('PURCHASE_RECEIVE')")
     public ResponseEntity<ApiResponse<PurchaseOrder>> receiveGoods(
             @PathVariable Long id,
             @AuthenticationPrincipal PmsUserPrincipal principal) {
-        return ResponseEntity.ok(ApiResponse.success(purchaseService.receiveGoods(id, principal.getId()), "Goods received and stock batches created"));
+        return ResponseEntity.ok(ApiResponse.success(purchaseService.receiveGoods(id, principal != null ? principal.getId() : null), "Goods received and stock batches created"));
     }
 }

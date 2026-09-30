@@ -38,6 +38,10 @@ export const routes: Routes = [
         loadComponent: () => import('./domains/cash/cash-management.component').then(m => m.CashManagementComponent) 
       },
       { 
+        path: 'expenses', 
+        loadComponent: () => import('./domains/expenses/expenses.component').then(m => m.ExpensesComponent) 
+      },
+      { 
         path: 'customers', 
         loadComponent: () => import('./domains/customers/customers.component').then(m => m.CustomersComponent) 
       },

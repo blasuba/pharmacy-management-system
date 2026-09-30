@@ -38,6 +38,10 @@ export interface SystemSettings {
   expiryAlertDays: number;
   sessionTimeoutMinutes?: number;
   sessionWarningMinutes?: number;
+  autoPrintReceipt?: boolean;
+  requireShiftOpen?: boolean;
+  maxDiscountPercent?: number;
+  defaultPaymentMethod?: string;
   updatedAt?: string;
 }
 

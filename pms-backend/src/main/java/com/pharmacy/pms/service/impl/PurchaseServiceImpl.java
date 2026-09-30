@@ -117,6 +117,65 @@ public class PurchaseServiceImpl implements PurchaseService {
 
     @Override
     @Transactional
+    public PurchaseOrder updatePurchaseOrder(Long id, PurchaseOrderCreateRequest request, Long userId) {
+        PurchaseOrder po = getPurchaseOrderById(id);
+        if (po.getStatus() == PurchaseStatus.RECEIVED) {
+            throw new IllegalStateException("Cannot modify a purchase order that has already been received into stock.");
+        }
+
+        Supplier supplier = supplierRepository.findById(request.getSupplierId())
+                .orElseThrow(() -> new ResourceNotFoundException("Supplier not found with ID: " + request.getSupplierId()));
+
+        if (request.getBranchId() != null) {
+            Branch branch = branchRepository.findById(request.getBranchId()).orElse(null);
+            if (branch != null) {
+                po.setBranch(branch);
+            }
+        }
+
+        po.setSupplier(supplier);
+        po.setNotes(request.getNotes());
+
+        // Clear existing items and replace with updated ones
+        po.getItems().clear();
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (PurchaseOrderItemRequest itemReq : request.getItems()) {
+            Drug drug = drugRepository.findById(itemReq.getDrugId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Drug not found with ID: " + itemReq.getDrugId()));
+
+            BigDecimal lineSubtotal = itemReq.getUnitCost().multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+            totalAmount = totalAmount.add(lineSubtotal);
+
+            PurchaseOrderItem item = new PurchaseOrderItem();
+            item.setPurchaseOrder(po);
+            item.setDrug(drug);
+            item.setQuantityOrdered(itemReq.getQuantity());
+            item.setQuantityReceived(0);
+            item.setUnitCost(itemReq.getUnitCost());
+            item.setSubtotal(lineSubtotal);
+            item.setBatchNumber(itemReq.getBatchNumber());
+            item.setExpiryDate(itemReq.getExpiryDate());
+
+            po.getItems().add(item);
+        }
+
+        po.setTotalAmount(totalAmount);
+        return purchaseOrderRepository.save(po);
+    }
+
+    @Override
+    @Transactional
+    public void deletePurchaseOrder(Long id, Long userId) {
+        PurchaseOrder po = getPurchaseOrderById(id);
+        if (po.getStatus() == PurchaseStatus.RECEIVED) {
+            throw new IllegalStateException("Cannot delete a purchase order that has already been received into inventory. Batches and audit trail records exist.");
+        }
+        purchaseOrderRepository.delete(po);
+    }
+
+    @Override
+    @Transactional
     public PurchaseOrder receiveGoods(Long poId, Long userId) {
         PurchaseOrder po = getPurchaseOrderById(poId);
         if (po.getStatus() == PurchaseStatus.RECEIVED) {

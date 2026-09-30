@@ -2,446 +2,345 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../environments/environment';
+import { NotificationService } from '../../core/services/notification.service';
 
-export interface ReportBarMetric {
-  period: string;
+export interface PeriodicTrendSlot {
+  periodName: string;
+  date?: string;
   revenue: number;
-  profit: number;
-  heightPct: number;
-  highlighted?: boolean;
+  cogs: number;
+  grossProfit: number;
+  expenses: number;
+  purchases?: number;
+  netProfit: number;
+  heightPct?: number;
 }
 
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule, RouterLink, LucideAngularModule],
   template: `
     <div class="pharmly-reports-root">
 
       <!-- ========================================================================= -->
-      <!-- 1. TOP HEADER & FILTER BAR                                                -->
+      <!-- 1. TOP HEADER & FINANCIAL PERIOD SELECTOR BAR                             -->
       <!-- ========================================================================= -->
       <div class="top-header-row">
         <div class="header-titles">
-          <h1 class="main-page-title">Financial & Profit Analytics</h1>
-          <div class="breadcrumb-sub">
-            <span>Analytics</span>
-            <span class="crumb-sep">&gt;</span>
-            <span class="crumb-active">P&L, Valuations & Distribution</span>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #0f766e, #0d9488); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(15,118,110,0.25);">
+              <lucide-icon name="line-chart" [size]="22"></lucide-icon>
+            </div>
+            <div>
+              <h1 class="main-page-title">Financial Accounting & Stock Intelligence</h1>
+              <div class="breadcrumb-sub">
+                <span>Pharmacy Management</span>
+                <span class="crumb-sep">&gt;</span>
+                <span class="crumb-active">P&L, Expenses, Revenue & Stock Valuations</span>
+              </div>
+            </div>
           </div>
         </div>
 
         <div class="header-controls">
-          <!-- Search box -->
-          <div class="search-capsule">
-            <lucide-icon name="search" [size]="15" class="search-icon"></lucide-icon>
-            <input 
-              type="text" 
-              placeholder="Search statements & items..." 
-              [(ngModel)]="searchQuery" 
-              class="search-input-field" />
-          </div>
-
-          <!-- Quick Date Range Pills -->
+          <!-- Quick Period Mode Pills -->
           <div class="date-pills-group">
-            <button (click)="setRange('TODAY')" [class.active]="selectedRange === 'TODAY'" class="range-pill">Today</button>
-            <button (click)="setRange('7D')" [class.active]="selectedRange === '7D'" class="range-pill">7 Days</button>
-            <button (click)="setRange('30D')" [class.active]="selectedRange === '30D'" class="range-pill">30 Days</button>
-            <button (click)="setRange('YEAR')" [class.active]="selectedRange === 'YEAR'" class="range-pill">This Year</button>
+            <button (click)="selectPeriodMode('DAILY')" [class.active]="selectedPeriodMode === 'DAILY'" class="range-pill">Daily</button>
+            <button (click)="selectPeriodMode('WEEKLY')" [class.active]="selectedPeriodMode === 'WEEKLY'" class="range-pill">7 Days</button>
+            <button (click)="selectPeriodMode('MONTHLY')" [class.active]="selectedPeriodMode === 'MONTHLY'" class="range-pill">Monthly</button>
+            <button (click)="selectPeriodMode('QUARTERLY')" [class.active]="selectedPeriodMode === 'QUARTERLY'" class="range-pill">Quarterly</button>
+            <button (click)="selectPeriodMode('YEARLY')" [class.active]="selectedPeriodMode === 'YEARLY'" class="range-pill">Yearly</button>
+            <button (click)="selectPeriodMode('CUSTOM')" [class.active]="selectedPeriodMode === 'CUSTOM'" class="range-pill">Custom</button>
           </div>
 
-          <!-- Download Sales PDF Button -->
-          <button (click)="downloadPdf()" class="btn-pdf-export" title="Export PDF Statement">
+          <!-- Export PDF Button -->
+          <button (click)="downloadPdf()" class="btn-pdf-export" title="Download Official Financial Statement PDF">
             <lucide-icon name="file-down" [size]="15"></lucide-icon>
-            <span>Official PDF</span>
+            <span>Audit PDF</span>
           </button>
         </div>
       </div>
 
-      <!-- Custom Date Filter Toolbar -->
+      <!-- Secondary Period Navigator & Filter Toolbar -->
       <div class="date-filter-bar">
+        <!-- Monthly/Quarterly/Yearly specific selectors -->
         <div class="filter-left">
-          <lucide-icon name="calendar" [size]="15" color="#0f766e"></lucide-icon>
-          <span class="filter-label">Custom Audit Window:</span>
-          <div class="date-input-wrap">
-            <input type="date" [(ngModel)]="startDate" (change)="loadReports()" class="date-field" />
+          <lucide-icon name="calendar" [size]="16" color="#0f766e"></lucide-icon>
+          <span class="filter-label">Financial Period:</span>
+
+          <!-- Year Selector (Applicable for Monthly, Quarterly, Yearly) -->
+          <select [(ngModel)]="selectedYear" (change)="loadFinancialStatement()" class="form-control-sm" *ngIf="selectedPeriodMode !== 'DAILY' && selectedPeriodMode !== 'WEEKLY' && selectedPeriodMode !== 'CUSTOM'">
+            <option *ngFor="let y of availableYears" [value]="y">{{ y }}</option>
+          </select>
+
+          <!-- Month Selector if Monthly -->
+          <select [(ngModel)]="selectedMonth" (change)="loadFinancialStatement()" class="form-control-sm" *ngIf="selectedPeriodMode === 'MONTHLY'">
+            <option *ngFor="let m of monthsList; let i = index" [value]="i + 1">{{ m }}</option>
+          </select>
+
+          <!-- Quarter Selector if Quarterly -->
+          <select [(ngModel)]="selectedQuarter" (change)="loadFinancialStatement()" class="form-control-sm" *ngIf="selectedPeriodMode === 'QUARTERLY'">
+            <option [value]="1">Q1 (Jan - Mar)</option>
+            <option [value]="2">Q2 (Apr - Jun)</option>
+            <option [value]="3">Q3 (Jul - Sep)</option>
+            <option [value]="4">Q4 (Oct - Dec)</option>
+          </select>
+
+          <!-- Custom Date Range Pickers -->
+          <div class="date-input-wrap" *ngIf="selectedPeriodMode === 'CUSTOM'">
+            <input type="date" [(ngModel)]="startDate" (change)="loadFinancialStatement()" class="date-field" />
             <span class="date-sep">to</span>
-            <input type="date" [(ngModel)]="endDate" (change)="loadReports()" class="date-field" />
+            <input type="date" [(ngModel)]="endDate" (change)="loadFinancialStatement()" class="date-field" />
           </div>
+
+          <!-- Active Period Statement Badge -->
+          <span class="active-period-badge">
+            {{ statement()?.periodLabel || 'Consolidated Statement' }}
+          </span>
         </div>
-        <button (click)="loadReports()" class="btn-recalculate">
-          <lucide-icon name="refresh-cw" [size]="14"></lucide-icon>
-          <span>Recalculate P&L</span>
-        </button>
+
+        <div style="display: flex; gap: 8px;">
+          <button (click)="loadFinancialStatement()" class="btn-recalculate" title="Recalculate live financial metrics">
+            <lucide-icon name="refresh-cw" [size]="14"></lucide-icon>
+            <span>Recalculate</span>
+          </button>
+        </div>
       </div>
 
       <!-- ========================================================================= -->
-      <!-- 2. TOP 4 METRIC CARDS ROW (Pharmly Layout)                                -->
+      <!-- 2. TOP 6 EXECUTIVE FINANCIAL KPI CARDS                                    -->
       <!-- ========================================================================= -->
-      <div class="top-cards-grid">
-        <!-- Hero Dark Emerald Card: Net Gross Profit -->
-        <div class="hero-emerald-card">
-          <div class="card-head-flex">
-            <div class="lime-icon-circle">
-              <span class="currency-symbol">$</span>
-            </div>
-            <div class="trend-pill-lime">
-              <lucide-icon name="trending-up" [size]="12"></lucide-icon>
-              <span>{{ (pnl()?.profitMarginPercentage || getProfitPercent()) | number:'1.1-1' }}% Margin</span>
-            </div>
-            <span class="dots-action-btn">&#8230;</span>
-          </div>
-          <div class="card-content-block">
-            <span class="hero-card-sublabel">Net Gross Profit</span>
-            <div class="hero-card-big-value">
-              ETB {{ (pnl()?.grossProfit || 0) | number:'1.2-2' }}
-            </div>
-            <span class="hero-card-footer-note">COGS: ETB {{ (pnl()?.totalCostOfGoodsSold || 0) | number:'1.0-0' }}</span>
-          </div>
-        </div>
-
-        <!-- White Card 1: Total Sales Revenue -->
-        <div class="white-metric-card">
+      <div class="top-cards-grid-6">
+        <!-- 1. Gross Sales Revenue -->
+        <div class="metric-card bg-card-blue">
           <div class="card-head-flex">
             <div class="icon-circle-soft blue-soft">
-              <lucide-icon name="dollar-sign" [size]="17" color="#0284c7"></lucide-icon>
+              <lucide-icon name="dollar-sign" [size]="18" color="#0284c7"></lucide-icon>
             </div>
-            <div class="trend-pill-blue">
-              <span>Gross Sales</span>
-            </div>
-            <span class="dots-action-btn">&#8230;</span>
+            <span class="badge badge-primary">Operating Revenue</span>
           </div>
           <div class="card-content-block">
-            <span class="white-card-sublabel">Period Revenue</span>
-            <div class="white-card-big-value text-blue">
-              ETB {{ (pnl()?.totalRevenue || 0) | number:'1.2-2' }}
+            <span class="card-sublabel">Gross Sales Revenue</span>
+            <div class="card-big-value text-blue">
+              ETB {{ (statement()?.totalRevenue || 0) | number:'1.2-2' }}
             </div>
-            <span class="white-card-footer-note">{{ pnl()?.totalSalesCount || 0 }} completed sales orders</span>
+            <span class="card-footer-note">{{ statement()?.totalSalesCount || 0 }} completed invoices</span>
           </div>
         </div>
 
-        <!-- White Card 2: Cost of Goods Sold (COGS) -->
-        <div class="white-metric-card">
+        <!-- 2. Cost of Goods Sold (COGS) -->
+        <div class="metric-card bg-card-rose">
           <div class="card-head-flex">
-            <div class="icon-circle-soft red-soft">
-              <lucide-icon name="trending-down" [size]="17" color="#ef4444"></lucide-icon>
+            <div class="icon-circle-soft rose-soft">
+              <lucide-icon name="shopping-bag" [size]="18" color="#e11d48"></lucide-icon>
             </div>
-            <div class="trend-pill-red">
-              <span>{{ getCostPercent() }}% Cost Ratio</span>
-            </div>
-            <span class="dots-action-btn">&#8230;</span>
+            <span class="badge badge-rose">{{ getCostPercent() }}% Cost Ratio</span>
           </div>
           <div class="card-content-block">
-            <span class="white-card-sublabel">Cost of Goods Sold (COGS)</span>
-            <div class="white-card-big-value text-red">
-              ETB {{ (pnl()?.totalCostOfGoodsSold || 0) | number:'1.2-2' }}
+            <span class="card-sublabel">Cost of Goods Sold (COGS)</span>
+            <div class="card-big-value text-rose">
+              ETB {{ (statement()?.totalCostOfGoodsSold || 0) | number:'1.2-2' }}
             </div>
-            <span class="white-card-footer-note">Direct batch procurement cost</span>
+            <span class="card-footer-note">Direct batch acquisition cost</span>
           </div>
         </div>
 
-        <!-- Efficiency Banner Card: Inventory Stock Asset Worth -->
-        <div class="efficiency-banner-card">
+        <!-- 3. Gross Operating Profit -->
+        <div class="metric-card bg-card-teal">
           <div class="card-head-flex">
-            <span class="banner-badge">ASSET VALUATION</span>
-            <span class="dots-action-btn">&#8230;</span>
+            <div class="icon-circle-soft teal-soft">
+              <lucide-icon name="trending-up" [size]="18" color="#0f766e"></lucide-icon>
+            </div>
+            <span class="badge badge-teal">{{ (statement()?.grossMarginPercentage || 0) | number:'1.1-1' }}% Gross Margin</span>
           </div>
-          <div class="banner-overlay-content">
-            <span class="banner-sublabel">Total Stock Worth</span>
-            <div class="banner-big-value">
-              ETB {{ (valuation()?.totalCostValuation || 0) | number:'1.2-2' }}
+          <div class="card-content-block">
+            <span class="card-sublabel">Gross Profit</span>
+            <div class="card-big-value text-teal">
+              ETB {{ (statement()?.grossProfit || 0) | number:'1.2-2' }}
             </div>
-            <div class="banner-footer-flex">
-              <span class="banner-retail-note">Retail: ETB {{ (valuation()?.totalRetailValuation || 0) | number:'1.0-0' }}</span>
-              <button (click)="downloadPdf()" class="btn-banner-action">
-                <lucide-icon name="file-text" [size]="13"></lucide-icon>
-                <span>Export PDF</span>
-              </button>
+            <span class="card-footer-note">Revenue minus direct COGS</span>
+          </div>
+        </div>
+
+        <!-- 4. Operating Expenses (OpEx) -->
+        <div class="metric-card bg-card-amber">
+          <div class="card-head-flex">
+            <div class="icon-circle-soft amber-soft">
+              <lucide-icon name="receipt" [size]="18" color="#d97706"></lucide-icon>
             </div>
+            <span class="badge badge-amber">{{ statement()?.expensesCount || 0 }} Expenses</span>
+          </div>
+          <div class="card-content-block">
+            <span class="card-sublabel">Operating Expenses (OpEx)</span>
+            <div class="card-big-value text-amber">
+              ETB {{ (statement()?.totalOperatingExpenses || 0) | number:'1.2-2' }}
+            </div>
+            <span class="card-footer-note">Rent, salaries, utilities & overheads</span>
+          </div>
+        </div>
+
+        <!-- 5. Procurement Outflows (Purchases) -->
+        <div class="metric-card bg-card-purple">
+          <div class="card-head-flex">
+            <div class="icon-circle-soft purple-soft">
+              <lucide-icon name="truck" [size]="18" color="#7c3aed"></lucide-icon>
+            </div>
+            <span class="badge badge-purple">{{ statement()?.purchasesCount || 0 }} Restock POs</span>
+          </div>
+          <div class="card-content-block">
+            <span class="card-sublabel">Inventory Restocking</span>
+            <div class="card-big-value text-purple">
+              ETB {{ (statement()?.totalPurchases || 0) | number:'1.2-2' }}
+            </div>
+            <span class="card-footer-note">GRN Received: ETB {{ (statement()?.totalReceivedPurchases || 0) | number:'1.0-0' }}</span>
+          </div>
+        </div>
+
+        <!-- 6. Hero Net Operating Profit (Bottom Line) -->
+        <div class="hero-emerald-card" [class.hero-loss]="(statement()?.netOperatingProfit || 0) < 0">
+          <div class="card-head-flex">
+            <div class="lime-icon-circle">
+              <lucide-icon [name]="(statement()?.netOperatingProfit || 0) >= 0 ? 'award' : 'alert-triangle'" [size]="20"></lucide-icon>
+            </div>
+            <div class="trend-pill-lime">
+              <span>{{ (statement()?.netProfitMarginPercentage || 0) | number:'1.1-1' }}% Net Margin</span>
+            </div>
+          </div>
+          <div class="card-content-block">
+            <span class="hero-card-sublabel">Net Operating Bottom Line</span>
+            <div class="hero-card-big-value">
+              ETB {{ (statement()?.netOperatingProfit || 0) | number:'1.2-2' }}
+            </div>
+            <span class="hero-card-footer-note">Gross Profit minus Operating Overheads</span>
           </div>
         </div>
       </div>
 
       <!-- ========================================================================= -->
-      <!-- 3. MIDDLE VISUAL CHARTS ROW (Capsule Bar Chart + Donut Margin Chart)      -->
+      <!-- 3. VISUAL CHARTS & DISTRIBUTION BREAKDOWN                                 -->
       <!-- ========================================================================= -->
       <div class="middle-analytics-grid">
         
-        <!-- Left: Sales & Profit Analytics Capsule Bar Chart (2/3 width) -->
+        <!-- Left: Periodic Trend Velocity Bar Chart -->
         <div class="analytics-chart-panel">
           <div class="panel-header-row">
             <div>
-              <h3 class="panel-title-text">Revenue vs Profit Velocity Analytics</h3>
-              <p class="panel-subtitle-text">Monthly trajectory of gross receipts and profit realization</p>
+              <h3 class="panel-title-text">Financial Velocity: Revenue vs Expenses vs Net Profit</h3>
+              <p class="panel-subtitle-text">
+                {{ selectedPeriodMode }} trajectory showing daily/monthly cash generation and bottom-line margin
+              </p>
             </div>
-            <div class="panel-header-tools">
-              <div class="timeframe-dropdown-chip">
-                <span>{{ selectedPeriodLabel }}</span>
-                <lucide-icon name="chevron-down" [size]="13"></lucide-icon>
-              </div>
-              <div class="nav-arrow-group">
-                <button (click)="shiftChartPage(-1)" class="nav-mini-arrow" title="Previous period">&lt;</button>
-                <button (click)="shiftChartPage(1)" class="nav-mini-arrow" title="Next period">&gt;</button>
-              </div>
+            <div class="chart-legend-row">
+              <span class="legend-chip"><span class="legend-box bg-blue"></span> Revenue</span>
+              <span class="legend-chip"><span class="legend-box bg-amber"></span> OpEx</span>
+              <span class="legend-chip"><span class="legend-box bg-emerald"></span> Net Profit</span>
             </div>
           </div>
 
-          <!-- Capsule Bar Chart Viewport -->
-          <div class="capsule-chart-viewport">
-            <div class="y-axis-labels">
-              <span>50k</span>
-              <span>40k</span>
-              <span>30k</span>
-              <span>20k</span>
-              <span>10k</span>
-              <span>0k</span>
-            </div>
-
+          <!-- Trend Bar Chart Viewport -->
+          <div class="capsule-chart-viewport" *ngIf="trendSeries.length > 0">
             <div class="bars-container-flex">
               <div 
-                *ngFor="let bar of chartBars; let idx = index" 
-                class="capsule-bar-column"
-                (mouseenter)="hoveredBarIndex = idx"
-                (mouseleave)="hoveredBarIndex = null">
+                *ngFor="let slot of trendSeries; let idx = index" 
+                class="trend-slot-column"
+                (mouseenter)="hoveredSlotIndex = idx"
+                (mouseleave)="hoveredSlotIndex = null">
                 
-                <!-- Floating Tooltip on Hover / Active -->
-                <div *ngIf="bar.highlighted || hoveredBarIndex === idx" class="capsule-tooltip-bubble">
-                  <div class="tip-amount">ETB {{ bar.revenue | number:'1.0-0' }}</div>
-                  <div class="tip-growth">Profit: ETB {{ bar.profit | number:'1.0-0' }}</div>
-                </div>
-
-                <!-- Capsule Track -->
-                <div class="capsule-track">
-                  <div 
-                    class="capsule-fill" 
-                    [class.striped-active]="bar.highlighted"
-                    [style.height.%]="bar.heightPct">
+                <!-- Floating Tooltip -->
+                <div *ngIf="hoveredSlotIndex === idx" class="capsule-tooltip-bubble">
+                  <div class="tip-title">{{ slot.periodName }}</div>
+                  <div class="tip-line"><span style="color: #38bdf8;">Revenue:</span> ETB {{ slot.revenue | number:'1.0-0' }}</div>
+                  <div class="tip-line"><span style="color: #f43f5e;">COGS:</span> ETB {{ slot.cogs | number:'1.0-0' }}</div>
+                  <div class="tip-line"><span style="color: #fbbf24;">Expenses:</span> ETB {{ slot.expenses | number:'1.0-0' }}</div>
+                  <div class="tip-line" style="font-weight: 800; border-top: 1px solid #334155; margin-top: 2px; padding-top: 2px;">
+                    <span [style.color]="slot.netProfit >= 0 ? '#4ade80' : '#f87171'">Net:</span> ETB {{ slot.netProfit | number:'1.0-0' }}
                   </div>
                 </div>
 
-                <!-- Bottom Period Label -->
-                <span class="bar-day-label" [class.label-active]="bar.highlighted">{{ bar.period }}</span>
+                <!-- Multi-bar group -->
+                <div class="multi-bars-group">
+                  <!-- Revenue Bar -->
+                  <div class="bar-pill bar-blue" [style.height.%]="getBarHeightPct(slot.revenue)" title="Revenue: ETB {{ slot.revenue }}"></div>
+                  <!-- Expense Bar -->
+                  <div class="bar-pill bar-amber" [style.height.%]="getBarHeightPct(slot.expenses)" title="Expenses: ETB {{ slot.expenses }}"></div>
+                  <!-- Net Profit Bar -->
+                  <div class="bar-pill" [class.bar-emerald]="slot.netProfit >= 0" [class.bar-red]="slot.netProfit < 0" [style.height.%]="getBarHeightPct(slot.netProfit)" title="Net Profit: ETB {{ slot.netProfit }}"></div>
+                </div>
+
+                <span class="bar-day-label" [class.label-active]="hoveredSlotIndex === idx">{{ slot.periodName }}</span>
               </div>
             </div>
           </div>
+
+          <div *ngIf="trendSeries.length === 0" style="padding: 40px; text-align: center; color: #94a3b8;">
+            No transactions recorded for the selected audit window.
+          </div>
         </div>
 
-        <!-- Right: Profit vs COGS Distribution Donut Chart (1/3 width) -->
+        <!-- Right: Revenue Distribution Breakdown Donut -->
         <div class="donut-chart-panel">
           <div class="panel-header-row">
             <div>
-              <h3 class="panel-title-text">P&L Margin Distribution</h3>
-              <p class="panel-subtitle-text">Gross Revenue split</p>
+              <h3 class="panel-title-text">P&L Revenue Allocation</h3>
+              <p class="panel-subtitle-text">How incoming revenue is distributed</p>
             </div>
-            <span class="badge-distribution">Period Margin</span>
+            <span class="badge badge-success">{{ (statement()?.netProfitMarginPercentage || 0) | number:'1.1-1' }}% Net</span>
           </div>
 
           <div class="donut-visual-container">
-            <!-- Multi-segment SVG Donut -->
             <div class="donut-svg-wrapper">
               <svg width="150" height="150" viewBox="0 0 42 42" class="donut-svg">
                 <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#f1f5f9" stroke-width="6.5"></circle>
                 <!-- Net Profit Ring Segment (Emerald) -->
                 <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#10b981" stroke-width="6.5"
                         stroke-linecap="round"
-                        [attr.stroke-dasharray]="getProfitDonutArray()" stroke-dashoffset="0"></circle>
-                <!-- COGS Ring Segment (Red/Coral) -->
-                <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#ef4444" stroke-width="6.5"
+                        [attr.stroke-dasharray]="getNetProfitDonutArray()" stroke-dashoffset="0"></circle>
+                <!-- OpEx Ring Segment (Amber) -->
+                <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#f59e0b" stroke-width="6.5"
                         stroke-linecap="round"
-                        [attr.stroke-dasharray]="getCostDonutArray()" [attr.stroke-dashoffset]="getCostDonutOffset()"></circle>
+                        [attr.stroke-dasharray]="getOpExDonutArray()" [attr.stroke-dashoffset]="getNetProfitDonutOffset()"></circle>
+                <!-- COGS Ring Segment (Rose) -->
+                <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#e11d48" stroke-width="6.5"
+                        stroke-linecap="round"
+                        [attr.stroke-dasharray]="getCostDonutArray()" [attr.stroke-dashoffset]="getCostDonutOffsetCalculated()"></circle>
               </svg>
-              <!-- Center Donut Label -->
               <div class="donut-center-info">
-                <span class="center-pct">{{ getProfitPercent() }}%</span>
-                <span class="center-sub">Net Margin</span>
+                <span class="center-pct">{{ (statement()?.netProfitMarginPercentage || 0) | number:'1.0-0' }}%</span>
+                <span class="center-sub">Net Profit</span>
               </div>
             </div>
 
-            <!-- Legend Pills List -->
+            <!-- Distribution Legend Cards -->
             <div class="donut-legend-list">
               <div class="legend-item-card">
                 <div class="legend-badge-row">
                   <span class="legend-dot dot-emerald"></span>
-                  <span class="legend-name">Net Gross Profit</span>
-                  <span class="legend-pct text-emerald">{{ getProfitPercent() }}%</span>
+                  <span class="legend-name">Net Retained Profit</span>
+                  <span class="legend-pct text-emerald">{{ (statement()?.netProfitMarginPercentage || 0) | number:'1.1-1' }}%</span>
                 </div>
-                <div class="legend-val">ETB {{ (pnl()?.grossProfit || 0) | number:'1.2-2' }}</div>
+                <div class="legend-val">ETB {{ (statement()?.netOperatingProfit || 0) | number:'1.2-2' }}</div>
               </div>
 
               <div class="legend-item-card">
                 <div class="legend-badge-row">
-                  <span class="legend-dot dot-red"></span>
+                  <span class="legend-dot dot-amber"></span>
+                  <span class="legend-name">Operating Expenses (OpEx)</span>
+                  <span class="legend-pct text-amber">{{ getOpExPercent() }}%</span>
+                </div>
+                <div class="legend-val">ETB {{ (statement()?.totalOperatingExpenses || 0) | number:'1.2-2' }}</div>
+              </div>
+
+              <div class="legend-item-card">
+                <div class="legend-badge-row">
+                  <span class="legend-dot dot-rose"></span>
                   <span class="legend-name">Cost of Goods (COGS)</span>
-                  <span class="legend-pct text-red">{{ getCostPercent() }}%</span>
+                  <span class="legend-pct text-rose">{{ getCostPercent() }}%</span>
                 </div>
-                <div class="legend-val">ETB {{ (pnl()?.totalCostOfGoodsSold || 0) | number:'1.2-2' }}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel-bottom-summary">
-            <span>Verified from immutable POS batches</span>
-            <strong class="text-emerald">{{ (pnl()?.profitMarginPercentage || getProfitPercent()) | number:'1.1-2' }}% Net Margin</strong>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ========================================================================= -->
-      <!-- 4. SECOND VISUAL ROW: PAYMENT TENDER DONUT & EXPIRY RISK HORIZON MATRIX  -->
-      <!-- ========================================================================= -->
-      <div class="second-visual-grid">
-        
-        <!-- Payment Tender Donut Breakdown -->
-        <div class="tender-donut-card">
-          <div class="panel-header-row">
-            <div>
-              <h3 class="panel-title-text">Payment Tender Channel Distribution</h3>
-              <p class="panel-subtitle-text">Cash, Telebirr & Card settlement breakdown</p>
-            </div>
-            <span class="badge-channel">POS Shift</span>
-          </div>
-
-          <div class="tender-flex-layout">
-            <!-- SVG Donut -->
-            <div class="donut-svg-wrapper">
-              <svg width="140" height="140" viewBox="0 0 42 42" class="donut-svg">
-                <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#f1f5f9" stroke-width="6.5"></circle>
-                <!-- Cash (Sky Blue) -->
-                <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#0284c7" stroke-width="6.5"
-                        stroke-linecap="round"
-                        [attr.stroke-dasharray]="getCashDonutArray()" stroke-dashoffset="0"></circle>
-                <!-- Telebirr/Digital (Purple) -->
-                <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#8b5cf6" stroke-width="6.5"
-                        stroke-linecap="round"
-                        [attr.stroke-dasharray]="getDigitalDonutArray()" [attr.stroke-dashoffset]="getCashDonutOffset()"></circle>
-                <!-- Card/Bank (Amber) -->
-                <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#f59e0b" stroke-width="6.5"
-                        stroke-linecap="round"
-                        [attr.stroke-dasharray]="getCardDonutArray()" [attr.stroke-dashoffset]="getCardDonutOffset()"></circle>
-              </svg>
-              <div class="donut-center-info">
-                <lucide-icon name="wallet" [size]="18" color="#0f766e"></lucide-icon>
-                <span class="center-sub">Channels</span>
-              </div>
-            </div>
-
-            <!-- Tender Breakdown Pills -->
-            <div class="tender-details-list">
-              <div class="tender-detail-row">
-                <div class="t-left">
-                  <span class="tender-color-pill pill-blue"></span>
-                  <lucide-icon name="banknote" [size]="14" color="#0284c7"></lucide-icon>
-                  <span class="t-label">Physical Cash Drawer</span>
-                </div>
-                <div class="t-right">
-                  <span class="t-amount">ETB {{ (cashierShift()?.cashAmount || 0) | number:'1.2-2' }}</span>
-                  <span class="t-pct">({{ getCashPercent() }}%)</span>
-                </div>
-              </div>
-
-              <div class="tender-detail-row">
-                <div class="t-left">
-                  <span class="tender-color-pill pill-purple"></span>
-                  <lucide-icon name="smartphone" [size]="14" color="#8b5cf6"></lucide-icon>
-                  <span class="t-label">Telebirr / Digital Pay</span>
-                </div>
-                <div class="t-right">
-                  <span class="t-amount">ETB {{ (cashierShift()?.digitalAmount || 0) | number:'1.2-2' }}</span>
-                  <span class="t-pct">({{ getDigitalPercent() }}%)</span>
-                </div>
-              </div>
-
-              <div class="tender-detail-row">
-                <div class="t-left">
-                  <span class="tender-color-pill pill-amber"></span>
-                  <lucide-icon name="credit-card" [size]="14" color="#f59e0b"></lucide-icon>
-                  <span class="t-label">POS Card / Bank Transfer</span>
-                </div>
-                <div class="t-right">
-                  <span class="t-amount">ETB {{ (cashierShift()?.cardOrBankAmount || 0) | number:'1.2-2' }}</span>
-                  <span class="t-pct">({{ getCardPercent() }}%)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="tender-shift-footer">
-            <span>Total Shift Tender Volume:</span>
-            <strong>ETB {{ (cashierShift()?.totalRevenue || pnl()?.totalRevenue || 0) | number:'1.2-2' }}</strong>
-          </div>
-        </div>
-
-        <!-- Expiry Risk & Waste Mitigation Horizon Matrix -->
-        <div class="expiry-risk-panel">
-          <div class="panel-header-row">
-            <div>
-              <h3 class="panel-title-text">Expiry Risk & Loss Mitigation Matrix</h3>
-              <p class="panel-subtitle-text">FEFO exposure horizons and write-off prevention</p>
-            </div>
-            <span class="badge-fefo">FEFO Guard</span>
-          </div>
-
-          <div class="expiry-matrix-grid">
-            <!-- Expired Card -->
-            <div class="risk-matrix-card card-expired">
-              <div class="risk-card-head">
-                <div class="risk-title-group">
-                  <span class="risk-indicator dot-red"></span>
-                  <span class="risk-title">Expired (Write-off)</span>
-                </div>
-                <span class="risk-badge-red">{{ expiry()?.expiredCount || 0 }} Batches</span>
-              </div>
-              <div class="risk-val-text">ETB {{ (expiry()?.expiredLossValuation || 0) | number:'1.2-2' }}</div>
-              <div class="risk-progress-track">
-                <div class="risk-bar bar-red" [style.width.%]="getExpiryRiskPct('expired')"></div>
-              </div>
-            </div>
-
-            <!-- High Risk (<30 Days) -->
-            <div class="risk-matrix-card card-high">
-              <div class="risk-card-head">
-                <div class="risk-title-group">
-                  <span class="risk-indicator dot-amber"></span>
-                  <span class="risk-title">High Risk (&lt; 30 Days)</span>
-                </div>
-                <span class="risk-badge-amber">{{ expiry()?.expiring30DaysCount || 0 }} Batches</span>
-              </div>
-              <div class="risk-val-text">ETB {{ (expiry()?.expiring30DaysValuation || 0) | number:'1.2-2' }}</div>
-              <div class="risk-progress-track">
-                <div class="risk-bar bar-amber" [style.width.%]="getExpiryRiskPct('high')"></div>
-              </div>
-            </div>
-
-            <!-- Medium Risk (30 - 60 Days) -->
-            <div class="risk-matrix-card card-medium">
-              <div class="risk-card-head">
-                <div class="risk-title-group">
-                  <span class="risk-indicator dot-blue"></span>
-                  <span class="risk-title">Medium (30 - 60 Days)</span>
-                </div>
-                <span class="risk-badge-blue">{{ expiry()?.expiring60DaysCount || 0 }} Batches</span>
-              </div>
-              <div class="risk-val-text">{{ expiry()?.expiring60DaysCount || 0 }} Batches In Stock</div>
-              <div class="risk-progress-track">
-                <div class="risk-bar bar-blue" [style.width.%]="getExpiryRiskPct('medium')"></div>
-              </div>
-            </div>
-
-            <!-- Watchlist (60 - 90 Days) -->
-            <div class="risk-matrix-card card-watch">
-              <div class="risk-card-head">
-                <div class="risk-title-group">
-                  <span class="risk-indicator dot-emerald"></span>
-                  <span class="risk-title">Watchlist (60 - 90 Days)</span>
-                </div>
-                <span class="risk-badge-emerald">{{ expiry()?.expiring90DaysCount || 0 }} Batches</span>
-              </div>
-              <div class="risk-val-text">{{ expiry()?.expiring90DaysCount || 0 }} Batches In Stock</div>
-              <div class="risk-progress-track">
-                <div class="risk-bar bar-emerald" [style.width.%]="getExpiryRiskPct('watch')"></div>
+                <div class="legend-val">ETB {{ (statement()?.totalCostOfGoodsSold || 0) | number:'1.2-2' }}</div>
               </div>
             </div>
           </div>
@@ -450,75 +349,215 @@ export interface ReportBarMetric {
       </div>
 
       <!-- ========================================================================= -->
-      <!-- 5. BOTTOM SECTION: ITEMIZED FINANCIAL STATEMENTS & BREAKDOWN TABLE        -->
+      <!-- 4. NAVIGATION TABS FOR DETAILED STATEMENTS & EXPENSES                      -->
       <!-- ========================================================================= -->
       <div class="financial-statement-panel">
         <div class="statement-header-row">
           <div class="tab-pill-group">
             <button (click)="activeTab = 'PL'" [class.active]="activeTab === 'PL'" class="tab-btn">
               <lucide-icon name="file-text" [size]="14"></lucide-icon>
-              <span>P&L Executive Statement</span>
+              <span>Profit & Loss Statement</span>
             </button>
+
+            <button (click)="activeTab = 'EXPENSES'" [class.active]="activeTab === 'EXPENSES'" class="tab-btn">
+              <lucide-icon name="receipt" [size]="14"></lucide-icon>
+              <span>Operating Expenses Allocation ({{ statement()?.expensesCount || 0 }})</span>
+            </button>
+
             <button (click)="activeTab = 'VALUATION'" [class.active]="activeTab === 'VALUATION'" class="tab-btn">
               <lucide-icon name="boxes" [size]="14"></lucide-icon>
-              <span>Inventory Asset Valuation</span>
+              <span>Stock Valuation & Asset Worth</span>
             </button>
+
             <button (click)="activeTab = 'TENDER'" [class.active]="activeTab === 'TENDER'" class="tab-btn">
               <lucide-icon name="credit-card" [size]="14"></lucide-icon>
-              <span>Shift Settlement Audit</span>
+              <span>Payment Channels Audit</span>
             </button>
           </div>
 
-          <button (click)="downloadPdf()" class="btn-export-statement">
-            <lucide-icon name="printer" [size]="14"></lucide-icon>
-            <span>Print Official Audit</span>
-          </button>
+          <div style="display: flex; gap: 8px;">
+            <button (click)="downloadPdf()" class="btn-export-statement">
+              <lucide-icon name="printer" [size]="14"></lucide-icon>
+              <span>Print Official Audit</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Tab 1: P&L Statement -->
+        <!-- TAB 1: P&L EXECUTIVE STATEMENT TABLE -->
         <div *ngIf="activeTab === 'PL'" class="table-scroll-wrapper">
           <table class="statement-table">
             <thead>
               <tr>
                 <th>Accounting Ledger Item</th>
                 <th>Classification</th>
-                <th>Calculation Basis</th>
+                <th>Calculation Basis / Notes</th>
                 <th style="text-align: right;">Amount (ETB)</th>
-                <th style="text-align: right;">% Gross Sales</th>
+                <th style="text-align: right;">% Gross Revenue</th>
               </tr>
             </thead>
             <tbody>
+              <!-- 1. Revenue -->
               <tr>
-                <td class="td-strong">Gross Sales Revenue</td>
+                <td class="td-strong">1. Gross Sales Revenue</td>
                 <td><span class="badge badge-primary">Operating Income</span></td>
-                <td>Verified immutable POS invoices</td>
-                <td class="td-amount td-emerald">ETB {{ (pnl()?.totalRevenue || 0) | number:'1.2-2' }}</td>
+                <td>Completed POS sales transactions</td>
+                <td class="td-amount td-emerald">ETB {{ (statement()?.totalRevenue || 0) | number:'1.2-2' }}</td>
                 <td class="td-amount">100.0%</td>
               </tr>
+
+              <!-- 2. COGS -->
               <tr>
-                <td class="td-strong">Cost of Goods Sold (COGS)</td>
-                <td><span class="badge badge-warning">Direct Expense</span></td>
-                <td>Batch wholesale acquisition cost (FEFO)</td>
-                <td class="td-amount td-red">- ETB {{ (pnl()?.totalCostOfGoodsSold || 0) | number:'1.2-2' }}</td>
-                <td class="td-amount td-red">{{ getCostPercent() }}%</td>
+                <td class="td-strong">2. Cost of Goods Sold (COGS)</td>
+                <td><span class="badge badge-rose">Direct Cost</span></td>
+                <td>Batch wholesale purchase price (FEFO intake)</td>
+                <td class="td-amount td-rose">- ETB {{ (statement()?.totalCostOfGoodsSold || 0) | number:'1.2-2' }}</td>
+                <td class="td-amount td-rose">{{ getCostPercent() }}%</td>
               </tr>
-              <tr class="row-highlight">
-                <td class="td-bold-large">Net Gross Profit</td>
-                <td><span class="badge badge-success">Gross Margin</span></td>
-                <td>Revenue minus COGS</td>
-                <td class="td-amount td-bold-large td-emerald">ETB {{ (pnl()?.grossProfit || 0) | number:'1.2-2' }}</td>
-                <td class="td-amount td-bold-large td-emerald">{{ (pnl()?.profitMarginPercentage || getProfitPercent()) | number:'1.1-2' }}%</td>
+
+              <!-- 3. Gross Margin -->
+              <tr class="row-subtotal">
+                <td class="td-bold-large">3. Gross Operating Profit</td>
+                <td><span class="badge badge-teal">Gross Margin</span></td>
+                <td>Gross Revenue minus Direct COGS</td>
+                <td class="td-amount td-bold-large td-teal">ETB {{ (statement()?.grossProfit || 0) | number:'1.2-2' }}</td>
+                <td class="td-amount td-bold-large td-teal">{{ (statement()?.grossMarginPercentage || 0) | number:'1.1-2' }}%</td>
+              </tr>
+
+              <!-- 4. Operating Expenses Line -->
+              <tr>
+                <td class="td-strong">4. Total Operating Expenses (OpEx)</td>
+                <td><span class="badge badge-amber">Overhead Outflow</span></td>
+                <td>Rent, payroll, utilities, transport, licenses</td>
+                <td class="td-amount td-amber">- ETB {{ (statement()?.totalOperatingExpenses || 0) | number:'1.2-2' }}</td>
+                <td class="td-amount td-amber">{{ getOpExPercent() }}%</td>
+              </tr>
+
+              <!-- 5. Expired Stock Losses -->
+              <tr *ngIf="(statement()?.expiredStockLoss || 0) > 0">
+                <td class="td-strong">5. Expired / Disposed Stock Loss</td>
+                <td><span class="badge badge-rose">Inventory Loss</span></td>
+                <td>Cost valuation of expired and written-off batches</td>
+                <td class="td-amount td-rose">- ETB {{ (statement()?.expiredStockLoss || 0) | number:'1.2-2' }}</td>
+                <td class="td-amount td-rose">{{ getLossPercent() }}%</td>
+              </tr>
+
+              <!-- 6. NET OPERATING PROFIT -->
+              <tr class="row-grand-total" [class.row-loss]="(statement()?.netOperatingProfit || 0) < 0">
+                <td class="td-hero-bold">NET OPERATING PROFIT (BOTTOM LINE)</td>
+                <td>
+                  <span [class]="(statement()?.netOperatingProfit || 0) >= 0 ? 'badge badge-success' : 'badge badge-rose'">
+                    {{ (statement()?.netOperatingProfit || 0) >= 0 ? 'Net Surplus' : 'Operating Deficit' }}
+                  </span>
+                </td>
+                <td>Gross Profit minus All Operating Overheads</td>
+                <td class="td-amount td-hero-bold" [style.color]="(statement()?.netOperatingProfit || 0) >= 0 ? '#059669' : '#dc2626'">
+                  ETB {{ (statement()?.netOperatingProfit || 0) | number:'1.2-2' }}
+                </td>
+                <td class="td-amount td-hero-bold" [style.color]="(statement()?.netOperatingProfit || 0) >= 0 ? '#059669' : '#dc2626'">
+                  {{ (statement()?.netProfitMarginPercentage || 0) | number:'1.1-2' }}%
+                </td>
+              </tr>
+
+              <!-- Restocking Memo Line -->
+              <tr style="background: #f8fafc; font-size: 12px; color: #64748b;">
+                <td><em>Memo: Period Procurement Purchases</em></td>
+                <td><span class="badge badge-purple">Inventory Capex</span></td>
+                <td>Restock Purchase Orders issued to suppliers</td>
+                <td class="td-amount">ETB {{ (statement()?.totalPurchases || 0) | number:'1.2-2' }}</td>
+                <td class="td-amount">—</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Tab 2: Inventory Valuation Summary -->
+        <!-- TAB 2: OPERATING EXPENSES COST ALLOCATION & BREAKDOWN -->
+        <div *ngIf="activeTab === 'EXPENSES'" style="display: flex; flex-direction: column; gap: 16px;">
+          <!-- Banner link to dedicated Expenses page -->
+          <div class="card" style="padding: 14px 18px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 38px; height: 38px; border-radius: 10px; background: #0284c7; color: #fff; display: flex; align-items: center; justify-content: center;">
+                <lucide-icon name="wallet" [size]="20"></lucide-icon>
+              </div>
+              <div>
+                <h4 style="font-size: 14px; font-weight: 800; color: #0369a1; margin: 0;">Detailed Expense Records & Receipt Vouchers</h4>
+                <p style="font-size: 12px; color: #0284c7; margin: 2px 0 0;">
+                  Manage daily entries, search voucher numbers, attach payment proofs, and edit logs in the dedicated register.
+                </p>
+              </div>
+            </div>
+            <a routerLink="/expenses" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; text-decoration: none;">
+              <span>Open Expenses Register</span>
+              <lucide-icon name="arrow-right" [size]="14"></lucide-icon>
+            </a>
+          </div>
+
+          <!-- Category Quick Summary Cards -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+            <div *ngFor="let cat of expenseCategoriesSummary" class="card" style="padding: 12px 14px; border-left: 4px solid #0284c7;">
+              <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">{{ formatCategoryName(cat.key) }}</div>
+              <div style="font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 4px; font-family: 'JetBrains Mono', monospace;">
+                ETB {{ cat.amount | number:'1.2-2' }}
+              </div>
+              <div style="font-size: 11px; color: #0284c7; margin-top: 2px; font-weight: 600;">
+                {{ getCategoryOpExShare(cat.amount) }}% of Total OpEx
+              </div>
+            </div>
+          </div>
+
+          <!-- Expense Allocation Statement Table -->
+          <div class="table-scroll-wrapper card" style="padding: 0; overflow: hidden;">
+            <table class="statement-table">
+              <thead>
+                <tr>
+                  <th>Expense Category</th>
+                  <th>Overhead Classification</th>
+                  <th style="text-align: right;">Period Expenditure (ETB)</th>
+                  <th style="text-align: right;">% of Total OpEx</th>
+                  <th style="text-align: right;">% of Gross Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let cat of expenseCategoriesSummary">
+                  <td class="td-strong">
+                    <span class="badge badge-amber" style="margin-right: 8px;">●</span>
+                    {{ formatCategoryName(cat.key) }}
+                  </td>
+                  <td>{{ getCategoryClassification(cat.key) }}</td>
+                  <td class="td-amount td-bold-large" style="color: #d97706;">
+                    ETB {{ cat.amount | number:'1.2-2' }}
+                  </td>
+                  <td class="td-amount td-bold-large">
+                    {{ getCategoryOpExShare(cat.amount) }}%
+                  </td>
+                  <td class="td-amount">
+                    {{ getCategoryRevenueShare(cat.amount) }}%
+                  </td>
+                </tr>
+                <tr class="row-subtotal">
+                  <td class="td-bold-large">Total Period Operating Expenses (OpEx)</td>
+                  <td>Consolidated Operating Overheads</td>
+                  <td class="td-amount td-bold-large td-amber">
+                    ETB {{ (statement()?.totalOperatingExpenses || 0) | number:'1.2-2' }}
+                  </td>
+                  <td class="td-amount td-bold-large">100.0%</td>
+                  <td class="td-amount td-bold-large">{{ getOpExPercent() }}%</td>
+                </tr>
+                <tr *ngIf="expenseCategoriesSummary.length === 0">
+                  <td colspan="5" style="text-align: center; padding: 36px; color: #94a3b8;">
+                    No operational overheads recorded for this financial cycle.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 3: STOCK VALUATION & ASSET WORTH -->
         <div *ngIf="activeTab === 'VALUATION'" class="table-scroll-wrapper">
           <table class="statement-table">
             <thead>
               <tr>
-                <th>Inventory Metric</th>
+                <th>Stock Valuation Metric</th>
                 <th>Asset Valuation Basis</th>
                 <th>Units / Batches</th>
                 <th style="text-align: right;">Valuation (ETB)</th>
@@ -527,34 +566,40 @@ export interface ReportBarMetric {
             <tbody>
               <tr>
                 <td class="td-strong">Wholesale Buying Value (Cost)</td>
-                <td>Procurement purchase valuation</td>
+                <td>Procurement purchase valuation for current on-hand batches</td>
                 <td>{{ valuation()?.totalUnitsInStock || 0 }} total units</td>
                 <td class="td-amount">ETB {{ (valuation()?.totalCostValuation || 0) | number:'1.2-2' }}</td>
               </tr>
               <tr>
                 <td class="td-strong">Projected Retail Selling Value</td>
-                <td>Counter retail list pricing</td>
+                <td>Counter retail list pricing across active stock</td>
                 <td>{{ valuation()?.activeBatchesCount || 0 }} active batches</td>
                 <td class="td-amount td-emerald">ETB {{ (valuation()?.totalRetailValuation || 0) | number:'1.2-2' }}</td>
               </tr>
-              <tr class="row-highlight">
+              <tr class="row-subtotal">
                 <td class="td-bold-large">Potential Future Gross Margin</td>
-                <td>Retail Potential - Wholesale Cost</td>
+                <td>Retail Potential minus Wholesale Cost</td>
                 <td>Inventory assets on shelf</td>
-                <td class="td-amount td-bold-large td-blue">ETB {{ (valuation()?.potentialGrossProfit || 0) | number:'1.2-2' }}</td>
+                <td class="td-amount td-bold-large td-teal">ETB {{ (valuation()?.potentialGrossProfit || 0) | number:'1.2-2' }}</td>
+              </tr>
+              <tr style="background: #fef2f2;">
+                <td class="td-strong" style="color: #dc2626;">Expired Batch Stock Write-off Loss</td>
+                <td>Batches past FEFO expiry date</td>
+                <td>{{ expiry()?.expiredCount || 0 }} expired batches</td>
+                <td class="td-amount td-rose">- ETB {{ (expiry()?.expiredLossValuation || 0) | number:'1.2-2' }}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Tab 3: Tender Settlement -->
+        <!-- TAB 4: PAYMENT CHANNELS AUDIT -->
         <div *ngIf="activeTab === 'TENDER'" class="table-scroll-wrapper">
           <table class="statement-table">
             <thead>
               <tr>
                 <th>Payment Channel</th>
-                <th>Type</th>
-                <th>Status</th>
+                <th>Settlement Method</th>
+                <th>Audit Status</th>
                 <th style="text-align: right;">Collected Amount (ETB)</th>
                 <th style="text-align: right;">Channel Share</th>
               </tr>
@@ -570,13 +615,13 @@ export interface ReportBarMetric {
               <tr>
                 <td class="td-strong">Telebirr / Digital Wallet</td>
                 <td>Electronic Pay</td>
-                <td><span class="badge badge-primary">Direct Deposit</span></td>
+                <td><span class="badge badge-primary">Direct Settlement</span></td>
                 <td class="td-amount">ETB {{ (cashierShift()?.digitalAmount || 0) | number:'1.2-2' }}</td>
                 <td class="td-amount">{{ getDigitalPercent() }}%</td>
               </tr>
               <tr>
                 <td class="td-strong">POS Card / Bank Transfer</td>
-                <td>Card Clearing</td>
+                <td>Card & Bank Clearing</td>
                 <td><span class="badge badge-primary">Settled</span></td>
                 <td class="td-amount">ETB {{ (cashierShift()?.cardOrBankAmount || 0) | number:'1.2-2' }}</td>
                 <td class="td-amount">{{ getCardPercent() }}%</td>
@@ -592,23 +637,17 @@ export interface ReportBarMetric {
     .pharmly-reports-root {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
       font-family: inherit;
       color: #0f172a;
     }
 
-    /* 1. TOP HEADER & FILTER BAR */
     .top-header-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 16px;
-    }
-    .header-titles {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+      gap: 14px;
     }
     .main-page-title {
       font-size: 22px;
@@ -621,12 +660,12 @@ export interface ReportBarMetric {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 12px;
-      color: #94a3b8;
-      font-weight: 500;
+      font-size: 12.5px;
+      color: #64748b;
+      margin-top: 2px;
     }
     .crumb-sep { color: #cbd5e1; }
-    .crumb-active { color: #64748b; font-weight: 600; }
+    .crumb-active { color: #0f766e; font-weight: 600; }
 
     .header-controls {
       display: flex;
@@ -634,507 +673,360 @@ export interface ReportBarMetric {
       gap: 10px;
       flex-wrap: wrap;
     }
-    .search-capsule {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 9999px;
-      padding: 7px 16px;
-      width: 220px;
-    }
-    .search-icon { color: #94a3b8; }
-    .search-input-field {
-      border: none;
-      outline: none;
-      font-size: 12px;
-      width: 100%;
-      background: transparent;
-      color: #0f172a;
-    }
-
     .date-pills-group {
       display: flex;
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 9999px;
+      background: #f1f5f9;
       padding: 3px;
-      gap: 2px;
+      border-radius: 10px;
+      gap: 3px;
     }
     .range-pill {
       border: none;
       background: transparent;
-      font-size: 11px;
+      padding: 6px 12px;
+      border-radius: 7px;
+      font-size: 12px;
       font-weight: 700;
       color: #64748b;
-      padding: 5px 12px;
-      border-radius: 9999px;
       cursor: pointer;
       transition: all 0.2s ease;
     }
     .range-pill.active {
-      background: #0f766e;
-      color: #ffffff;
-      box-shadow: 0 2px 6px rgba(15, 118, 110, 0.3);
+      background: #ffffff;
+      color: #0f766e;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
 
     .btn-pdf-export {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: #0284c7;
-      color: #ffffff;
-      font-size: 12px;
-      font-weight: 700;
       padding: 7px 14px;
-      border-radius: 9999px;
+      border-radius: 8px;
+      background: #0f766e;
+      color: #ffffff;
+      font-size: 12.5px;
+      font-weight: 700;
       border: none;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
-      transition: background 0.2s ease;
+      box-shadow: 0 2px 6px rgba(15,118,110,0.25);
     }
-    .btn-pdf-export:hover { background: #0369a1; }
 
     /* Date Filter Toolbar */
     .date-filter-bar {
-      background: #ffffff;
-      border: 1px solid #eef2f6;
-      border-radius: 14px;
-      padding: 12px 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px 16px;
       flex-wrap: wrap;
       gap: 12px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
     }
     .filter-left {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
     .filter-label {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #334155;
+    }
+    .form-control-sm {
+      padding: 5px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
       font-size: 12px;
       font-weight: 700;
-      color: #475569;
+      color: #0f172a;
+      background: #fff;
     }
     .date-input-wrap {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
     .date-field {
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 5px 10px;
+      padding: 4px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
       font-size: 12px;
-      color: #0f172a;
-      outline: none;
-      background: #f8fafc;
     }
     .date-sep {
-      color: #94a3b8;
-      font-size: 12px;
+      font-size: 11.5px;
+      color: #64748b;
+    }
+    .active-period-badge {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #0f766e;
+      background: #ccfbf1;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-left: 6px;
     }
     .btn-recalculate {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: #f1f5f9;
-      color: #0f766e;
-      border: 1px solid #ccfbf1;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
       font-size: 12px;
       font-weight: 700;
-      padding: 6px 14px;
-      border-radius: 8px;
+      color: #475569;
       cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .btn-recalculate:hover {
-      background: #ccfbf1;
     }
 
-    /* 2. TOP 4 METRIC CARDS ROW */
-    .top-cards-grid {
+    /* 6 Top Cards Grid */
+    .top-cards-grid-6 {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
     }
-    @media (max-width: 1100px) {
-      .top-cards-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 600px) {
-      .top-cards-grid { grid-template-columns: 1fr; }
-    }
-
-    /* Hero Dark Emerald Card */
-    .hero-emerald-card {
-      background: #134e4a;
-      border-radius: 18px;
-      padding: 20px 22px;
-      color: #ffffff;
+    .metric-card {
+      background: #ffffff;
+      border: 1px solid #eef2f6;
+      border-radius: 14px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      box-shadow: 0 10px 25px -5px rgba(19, 78, 74, 0.4);
+      gap: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.02);
     }
     .card-head-flex {
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .lime-icon-circle {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: #a3e635;
-      color: #134e4a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 900;
-      font-size: 16px;
-    }
-    .currency-symbol { line-height: 1; }
-    .trend-pill-lime {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: rgba(163, 230, 53, 0.2);
-      color: #bef264;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 9999px;
-    }
-    .dots-action-btn {
-      color: #99f6e4;
-      font-size: 20px;
-      font-weight: 800;
-      cursor: pointer;
-    }
-    .card-content-block {
-      margin-top: 16px;
-    }
-    .hero-card-sublabel {
-      font-size: 12px;
-      color: #a7f3d0;
-      font-weight: 600;
-    }
-    .hero-card-big-value {
-      font-size: 26px;
-      font-weight: 800;
-      color: #ffffff;
-      margin: 4px 0 2px;
-      letter-spacing: -0.02em;
-    }
-    .hero-card-footer-note {
-      font-size: 11px;
-      color: #99f6e4;
-    }
-
-    /* White Metric Cards */
-    .white-metric-card {
-      background: #ffffff;
-      border: 1px solid #eef2f6;
-      border-radius: 18px;
-      padding: 20px 22px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-    }
     .icon-circle-soft {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     .blue-soft { background: #e0f2fe; }
-    .red-soft { background: #fee2e2; }
+    .rose-soft { background: #ffe4e6; }
+    .teal-soft { background: #ccfbf1; }
+    .amber-soft { background: #fef3c7; }
+    .purple-soft { background: #ede9fe; }
 
-    .trend-pill-blue {
-      background: #e0f2fe;
-      color: #0284c7;
+    .card-sublabel {
       font-size: 11px;
       font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 9999px;
-    }
-    .trend-pill-red {
-      background: #fee2e2;
-      color: #dc2626;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 9999px;
-    }
-    .white-card-sublabel {
-      font-size: 12px;
       color: #64748b;
-      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
     }
-    .white-card-big-value {
-      font-size: 26px;
+    .card-big-value {
+      font-size: 20px;
       font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
       margin: 4px 0 2px;
-      letter-spacing: -0.02em;
     }
-    .text-blue { color: #0284c7; }
-    .text-red { color: #dc2626; }
-    .text-emerald { color: #059669; }
-    .white-card-footer-note {
+    .card-footer-note {
       font-size: 11px;
-      color: #94a3b8;
+      color: #64748b;
     }
 
-    /* Efficiency Banner Card */
-    .efficiency-banner-card {
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      border-radius: 18px;
-      padding: 20px 22px;
+    .text-blue { color: #0284c7; }
+    .text-rose { color: #e11d48; }
+    .text-teal { color: #0f766e; }
+    .text-amber { color: #d97706; }
+    .text-purple { color: #7c3aed; }
+    .text-emerald { color: #059669; }
+
+    /* Hero Net Card */
+    .hero-emerald-card {
+      background: linear-gradient(135deg, #064e3b, #047857);
       color: #ffffff;
+      border-radius: 14px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);
+      box-shadow: 0 4px 14px rgba(4,120,87,0.25);
     }
-    .banner-badge {
-      display: inline-block;
-      font-size: 10px;
-      font-weight: 800;
-      color: #38bdf8;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+    .hero-loss {
+      background: linear-gradient(135deg, #881337, #be123c);
     }
-    .banner-overlay-content {
+    .lime-icon-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.2);
       display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-top: 10px;
-    }
-    .banner-sublabel {
-      font-size: 12px;
-      color: #94a3b8;
-      font-weight: 600;
-    }
-    .banner-big-value {
-      font-size: 24px;
-      font-weight: 800;
-      color: #ffffff;
-      letter-spacing: -0.02em;
-    }
-    .banner-footer-flex {
-      display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-top: 8px;
+      justify-content: center;
+      color: #bef264;
     }
-    .banner-retail-note {
+    .trend-pill-lime {
       font-size: 11px;
-      color: #38bdf8;
+      font-weight: 800;
+      color: #bef264;
+      background: rgba(0,0,0,0.25);
+      padding: 2px 8px;
+      border-radius: 9999px;
     }
-    .btn-banner-action {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: #0284c7;
-      color: #ffffff;
+    .hero-card-sublabel {
       font-size: 11px;
       font-weight: 700;
-      padding: 5px 12px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
+      color: rgba(255,255,255,0.8);
+      text-transform: uppercase;
+    }
+    .hero-card-big-value {
+      font-size: 22px;
+      font-weight: 900;
+      font-family: 'JetBrains Mono', monospace;
+      color: #ffffff;
+      margin: 4px 0 2px;
+    }
+    .hero-card-footer-note {
+      font-size: 10.5px;
+      color: rgba(255,255,255,0.7);
     }
 
-    /* 3. MIDDLE ANALYTICS ROW */
+    /* Middle Visual Grid */
     .middle-analytics-grid {
       display: grid;
       grid-template-columns: 2fr 1fr;
       gap: 16px;
     }
-    @media (max-width: 1024px) {
+    @media (max-width: 990px) {
       .middle-analytics-grid { grid-template-columns: 1fr; }
     }
 
     .analytics-chart-panel, .donut-chart-panel {
       background: #ffffff;
       border: 1px solid #eef2f6;
-      border-radius: 18px;
-      padding: 22px 24px;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+      border-radius: 16px;
+      padding: 18px 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
     }
     .panel-header-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 18px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 8px;
     }
     .panel-title-text {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
       color: #0f172a;
       margin: 0;
     }
     .panel-subtitle-text {
-      font-size: 11px;
-      color: #94a3b8;
+      font-size: 12px;
+      color: #64748b;
       margin: 2px 0 0;
     }
-    .panel-header-tools {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .timeframe-dropdown-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #475569;
-      cursor: pointer;
-    }
-    .nav-arrow-group {
-      display: flex;
-      gap: 4px;
-    }
-    .nav-mini-arrow {
-      border: 1px solid #e2e8f0;
-      background: #ffffff;
-      border-radius: 6px;
-      padding: 4px 6px;
-      color: #64748b;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      font-weight: 700;
-    }
 
-    /* Capsule Chart Layout */
-    .capsule-chart-viewport {
+    .chart-legend-row {
       display: flex;
       gap: 12px;
-      height: 200px;
-      position: relative;
-    }
-    .y-axis-labels {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
       font-size: 11px;
-      color: #94a3b8;
-      font-weight: 600;
-      padding-bottom: 24px;
+      font-weight: 700;
+      color: #475569;
+    }
+    .legend-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-box {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+    .bg-blue { background: #0284c7; }
+    .bg-amber { background: #f59e0b; }
+    .bg-emerald { background: #10b981; }
+
+    /* Multi-bar Group Chart */
+    .capsule-chart-viewport {
+      height: 200px;
+      display: flex;
+      align-items: flex-end;
+      padding-top: 20px;
+      position: relative;
     }
     .bars-container-flex {
       display: flex;
       flex: 1;
       justify-content: space-between;
       align-items: flex-end;
-      gap: 8px;
-      position: relative;
+      height: 100%;
+      gap: 6px;
     }
-    .capsule-bar-column {
+    .trend-slot-column {
       flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
       height: 100%;
+      justify-content: flex-end;
       position: relative;
       cursor: pointer;
     }
-    .capsule-track {
-      width: 14px;
-      height: 170px;
-      background: #f1f5f9;
-      border-radius: 9999px;
+    .multi-bars-group {
       display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      overflow: hidden;
-    }
-    .capsule-fill {
+      align-items: flex-end;
+      gap: 3px;
+      height: 160px;
       width: 100%;
-      background: #0f766e;
-      border-radius: 9999px;
-      transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      justify-content: center;
     }
-    .capsule-fill.striped-active {
-      background: repeating-linear-gradient(
-        45deg,
-        #a3e635,
-        #a3e635 4px,
-        #134e4a 4px,
-        #134e4a 8px
-      );
-      box-shadow: 0 0 12px rgba(163, 230, 53, 0.6);
+    .bar-pill {
+      width: 8px;
+      min-height: 4px;
+      border-radius: 4px 4px 0 0;
+      transition: height 0.4s ease;
     }
+    .bar-blue { background: #0284c7; }
+    .bar-amber { background: #f59e0b; }
+    .bar-emerald { background: #10b981; }
+    .bar-red { background: #ef4444; }
+
     .bar-day-label {
       font-size: 10px;
       font-weight: 700;
       color: #94a3b8;
-      margin-top: 8px;
+      margin-top: 6px;
+      text-align: center;
+      white-space: nowrap;
     }
-    .bar-day-label.label-active {
-      color: #0f172a;
-      font-weight: 800;
-    }
+    .bar-day-label.label-active { color: #0f172a; font-weight: 800; }
 
-    /* Floating Tooltip */
     .capsule-tooltip-bubble {
       position: absolute;
-      top: -38px;
+      top: -65px;
       background: #0f172a;
       color: #ffffff;
-      padding: 4px 8px;
+      padding: 6px 10px;
       border-radius: 8px;
-      font-size: 10px;
-      font-weight: 700;
-      white-space: nowrap;
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-    }
-    .capsule-tooltip-bubble::after {
-      content: '';
-      position: absolute;
-      bottom: -4px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-left: 4px solid transparent;
-      border-right: 4px solid transparent;
-      border-top: 4px solid #0f172a;
-    }
-    .tip-amount { color: #ffffff; font-weight: 800; }
-    .tip-growth { color: #bef264; font-size: 9px; }
-
-    /* Donut Chart Visual Styles */
-    .badge-distribution {
       font-size: 11px;
-      font-weight: 700;
-      color: #059669;
-      background: #ecfdf5;
-      padding: 3px 8px;
-      border-radius: 9999px;
+      white-space: nowrap;
+      z-index: 20;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      pointer-events: none;
     }
+    .tip-title { font-weight: 800; margin-bottom: 2px; color: #fff; }
+    .tip-line { font-size: 10px; }
+
+    /* Donut layout */
     .donut-visual-container {
       display: flex;
       align-items: center;
-      gap: 18px;
+      gap: 16px;
       padding: 10px 0;
     }
     .donut-svg-wrapper {
@@ -1143,9 +1035,7 @@ export interface ReportBarMetric {
       align-items: center;
       justify-content: center;
     }
-    .donut-svg {
-      transform: rotate(-90deg);
-    }
+    .donut-svg { transform: rotate(-90deg); }
     .donut-center-info {
       position: absolute;
       display: flex;
@@ -1153,294 +1043,50 @@ export interface ReportBarMetric {
       align-items: center;
       justify-content: center;
     }
-    .center-pct {
-      font-size: 18px;
-      font-weight: 900;
-      color: #0f172a;
-      line-height: 1.1;
-    }
-    .center-sub {
-      font-size: 10px;
-      font-weight: 700;
-      color: #94a3b8;
-    }
+    .center-pct { font-size: 18px; font-weight: 900; color: #0f172a; line-height: 1.1; }
+    .center-sub { font-size: 10px; font-weight: 700; color: #94a3b8; }
 
     .donut-legend-list {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       flex: 1;
     }
     .legend-item-card {
       background: #f8fafc;
       border: 1px solid #eef2f6;
-      border-radius: 10px;
-      padding: 8px 12px;
+      border-radius: 8px;
+      padding: 6px 10px;
     }
     .legend-badge-row {
       display: flex;
       align-items: center;
       gap: 6px;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
-    .legend-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-    }
+    .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
     .dot-emerald { background: #10b981; }
-    .dot-red { background: #ef4444; }
-    .dot-blue { background: #0284c7; }
     .dot-amber { background: #f59e0b; }
-    .dot-purple { background: #8b5cf6; }
+    .dot-rose { background: #e11d48; }
+    .legend-name { font-size: 10.5px; font-weight: 700; color: #475569; flex: 1; }
+    .legend-pct { font-size: 10.5px; font-weight: 800; }
+    .legend-val { font-size: 12px; font-weight: 800; color: #0f172a; font-family: monospace; }
 
-    .legend-name {
-      font-size: 11px;
-      font-weight: 700;
-      color: #475569;
-      flex: 1;
-    }
-    .legend-pct {
-      font-size: 11px;
-      font-weight: 800;
-    }
-    .legend-val {
-      font-size: 13px;
-      font-weight: 800;
-      color: #0f172a;
-    }
-
-    .panel-bottom-summary {
-      margin-top: 14px;
-      padding-top: 10px;
-      border-top: 1px solid #f1f5f9;
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      color: #64748b;
-    }
-
-    /* 4. SECOND VISUAL ROW */
-    .second-visual-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    @media (max-width: 900px) {
-      .second-visual-grid { grid-template-columns: 1fr; }
-    }
-
-    .tender-donut-card, .expiry-risk-panel {
-      background: #ffffff;
-      border: 1px solid #eef2f6;
-      border-radius: 18px;
-      padding: 22px 24px;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-    }
-    .badge-channel {
-      font-size: 11px;
-      font-weight: 700;
-      color: #0284c7;
-      background: #e0f2fe;
-      padding: 3px 8px;
-      border-radius: 9999px;
-    }
-    .badge-fefo {
-      font-size: 11px;
-      font-weight: 700;
-      color: #d97706;
-      background: #fef3c7;
-      padding: 3px 8px;
-      border-radius: 9999px;
-    }
-
-    .tender-flex-layout {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      padding: 10px 0;
-    }
-    .tender-details-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      flex: 1;
-    }
-    .tender-detail-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 12px;
-      background: #f8fafc;
-      border-radius: 8px;
-    }
-    .t-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .tender-color-pill {
-      width: 4px;
-      height: 16px;
-      border-radius: 2px;
-    }
-    .pill-blue { background: #0284c7; }
-    .pill-purple { background: #8b5cf6; }
-    .pill-amber { background: #f59e0b; }
-
-    .t-label {
-      font-size: 11px;
-      font-weight: 700;
-      color: #334155;
-    }
-    .t-right {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .t-amount {
-      font-size: 12px;
-      font-weight: 800;
-      color: #0f172a;
-    }
-    .t-pct {
-      font-size: 11px;
-      color: #64748b;
-    }
-    .tender-shift-footer {
-      margin-top: 10px;
-      background: #f1f5f9;
-      padding: 8px 14px;
-      border-radius: 8px;
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: #334155;
-    }
-
-    /* Expiry Risk Horizon Matrix */
-    .expiry-matrix-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    .risk-matrix-card {
-      border-radius: 12px;
-      padding: 12px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      border: 1px solid transparent;
-    }
-    .card-expired {
-      background: #fef2f2;
-      border-color: #fee2e2;
-    }
-    .card-high {
-      background: #fffbeb;
-      border-color: #fef3c7;
-    }
-    .card-medium {
-      background: #f0f9ff;
-      border-color: #e0f2fe;
-    }
-    .card-watch {
-      background: #f0fdf4;
-      border-color: #dcfce7;
-    }
-
-    .risk-card-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .risk-title-group {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .risk-indicator {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-    }
-    .risk-title {
-      font-size: 11px;
-      font-weight: 800;
-      color: #334155;
-    }
-    .risk-badge-red {
-      font-size: 10px;
-      font-weight: 800;
-      color: #dc2626;
-      background: #fee2e2;
-      padding: 2px 6px;
-      border-radius: 6px;
-    }
-    .risk-badge-amber {
-      font-size: 10px;
-      font-weight: 800;
-      color: #d97706;
-      background: #fef3c7;
-      padding: 2px 6px;
-      border-radius: 6px;
-    }
-    .risk-badge-blue {
-      font-size: 10px;
-      font-weight: 800;
-      color: #0284c7;
-      background: #e0f2fe;
-      padding: 2px 6px;
-      border-radius: 6px;
-    }
-    .risk-badge-emerald {
-      font-size: 10px;
-      font-weight: 800;
-      color: #059669;
-      background: #dcfce7;
-      padding: 2px 6px;
-      border-radius: 6px;
-    }
-
-    .risk-val-text {
-      font-size: 13px;
-      font-weight: 800;
-      color: #0f172a;
-    }
-    .risk-progress-track {
-      height: 6px;
-      background: rgba(0, 0, 0, 0.05);
-      border-radius: 9999px;
-      overflow: hidden;
-      margin-top: 2px;
-    }
-    .risk-bar {
-      height: 100%;
-      border-radius: 9999px;
-      transition: width 0.5s ease;
-    }
-    .bar-red { background: #ef4444; }
-    .bar-amber { background: #f59e0b; }
-    .bar-blue { background: #0284c7; }
-    .bar-emerald { background: #10b981; }
-
-    /* 5. BOTTOM FINANCIAL STATEMENT PANEL */
+    /* Bottom Financial Statement Panel */
     .financial-statement-panel {
       background: #ffffff;
       border: 1px solid #eef2f6;
-      border-radius: 18px;
-      padding: 20px 24px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+      border-radius: 16px;
+      padding: 18px 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
     }
     .statement-header-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 10px;
     }
     .tab-pill-group {
       display: flex;
@@ -1448,6 +1094,7 @@ export interface ReportBarMetric {
       padding: 3px;
       border-radius: 10px;
       gap: 3px;
+      flex-wrap: wrap;
     }
     .tab-btn {
       display: inline-flex;
@@ -1458,17 +1105,16 @@ export interface ReportBarMetric {
       font-size: 12px;
       font-weight: 700;
       color: #64748b;
-      padding: 6px 14px;
-      border-radius: 8px;
+      padding: 6px 12px;
+      border-radius: 7px;
       cursor: pointer;
       transition: all 0.2s ease;
     }
     .tab-btn.active {
       background: #ffffff;
-      color: #0f172a;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      color: #0f766e;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
-
     .btn-export-statement {
       display: inline-flex;
       align-items: center;
@@ -1478,22 +1124,22 @@ export interface ReportBarMetric {
       font-size: 12px;
       font-weight: 700;
       color: #334155;
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: 8px;
       cursor: pointer;
     }
 
-    .table-scroll-wrapper {
-      overflow-x: auto;
-    }
+    /* Statement Table */
+    .table-scroll-wrapper { overflow-x: auto; }
     .statement-table {
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
       text-align: left;
+      font-size: 12.5px;
     }
     .statement-table th {
-      padding: 10px 14px;
+      padding: 10px 12px;
       font-size: 11px;
       font-weight: 700;
       color: #64748b;
@@ -1503,124 +1149,127 @@ export interface ReportBarMetric {
       background: #f8fafc;
     }
     .statement-table td {
-      padding: 12px 14px;
-      font-size: 13px;
+      padding: 11px 12px;
       color: #334155;
       border-bottom: 1px solid #f1f5f9;
     }
-    .statement-table tr:last-child td {
-      border-bottom: none;
+    .td-strong { font-weight: 700; color: #0f172a; }
+    .td-bold-large { font-size: 13.5px; font-weight: 800; color: #0f172a; }
+    .td-hero-bold { font-size: 14px; font-weight: 900; color: #0f172a; letter-spacing: 0.02em; }
+    .td-amount { text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+    .row-subtotal td {
+      background: #f0fdfa;
+      border-top: 1px solid #99f6e4;
+      border-bottom: 1px solid #99f6e4;
     }
-    .td-strong {
-      font-weight: 700;
-      color: #0f172a;
+    .row-grand-total td {
+      background: #ecfdf5;
+      border-top: 2px solid #6ee7b7;
+      border-bottom: 2px solid #6ee7b7;
     }
-    .td-bold-large {
-      font-size: 14px;
-      font-weight: 800;
-      color: #0f172a;
-    }
-    .td-amount {
-      text-align: right;
-      font-weight: 700;
-    }
-    .row-highlight td {
-      background: #f0fdf4;
-      border-top: 1px solid #bbf7d0;
-      border-bottom: 1px solid #bbf7d0;
+    .row-loss td {
+      background: #fff1f2 !important;
+      border-color: #fecdd3 !important;
     }
 
     /* Badges */
     .badge {
       display: inline-block;
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 700;
-      padding: 3px 8px;
+      padding: 2px 7px;
       border-radius: 6px;
     }
     .badge-primary { background: #e0f2fe; color: #0284c7; }
-    .badge-warning { background: #fee2e2; color: #dc2626; }
+    .badge-rose { background: #ffe4e6; color: #e11d48; }
+    .badge-teal { background: #ccfbf1; color: #0f766e; }
+    .badge-amber { background: #fef3c7; color: #d97706; }
+    .badge-purple { background: #ede9fe; color: #7c3aed; }
     .badge-success { background: #dcfce7; color: #15803d; }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
   `]
 })
 export class ReportsComponent implements OnInit {
-  pnl = signal<any>(null);
+  statement = signal<any>(null);
   valuation = signal<any>(null);
   expiry = signal<any>(null);
   cashierShift = signal<any>(null);
 
+  selectedPeriodMode: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | 'CUSTOM' = 'MONTHLY';
+  selectedYear: number = new Date().getFullYear();
+  selectedQuarter: number = Math.floor((new Date().getMonth() / 3)) + 1;
+  selectedMonth: number = new Date().getMonth() + 1;
   startDate = '';
   endDate = '';
-  selectedRange: 'TODAY' | '7D' | '30D' | 'YEAR' = '30D';
-  selectedPeriodLabel = 'This Year (12 Mo)';
-  activeTab: 'PL' | 'VALUATION' | 'TENDER' = 'PL';
-  searchQuery = '';
-  hoveredBarIndex: number | null = null;
 
-  chartBars: ReportBarMetric[] = [
-    { period: 'Jan', revenue: 14200, profit: 5400, heightPct: 40 },
-    { period: 'Feb', revenue: 16800, profit: 6200, heightPct: 48 },
-    { period: 'Mar', revenue: 19500, profit: 7100, heightPct: 55 },
-    { period: 'Apr', revenue: 22000, profit: 8300, heightPct: 62 },
-    { period: 'May', revenue: 18400, profit: 6900, heightPct: 52 },
-    { period: 'Jun', revenue: 25600, profit: 9800, heightPct: 72 },
-    { period: 'Jul', revenue: 28900, profit: 11200, heightPct: 82 },
-    { period: 'Aug', revenue: 31500, profit: 12400, heightPct: 88, highlighted: true },
-    { period: 'Sep', revenue: 27800, profit: 10500, heightPct: 78 },
-    { period: 'Oct', revenue: 24300, profit: 9200, heightPct: 68 },
-    { period: 'Nov', revenue: 29800, profit: 11500, heightPct: 84 },
-    { period: 'Dec', revenue: 35200, profit: 13900, heightPct: 95 }
-  ];
+  availableYears: number[] = [2026, 2025, 2024];
+  monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-  constructor(private http: HttpClient) {}
+  activeTab: 'PL' | 'EXPENSES' | 'VALUATION' | 'TENDER' = 'PL';
+  trendSeries: PeriodicTrendSlot[] = [];
+  hoveredSlotIndex: number | null = null;
+
+  constructor(
+    private http: HttpClient,
+    public router: Router,
+    private route: ActivatedRoute,
+    private notificationService: NotificationService
+  ) {}
 
   ngOnInit(): void {
-    this.setRange('30D');
-    this.loadReports();
-  }
+    const today = new Date();
+    this.startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+    this.endDate = today.toISOString().split('T')[0];
 
-  setRange(type: 'TODAY' | '7D' | '30D' | 'YEAR'): void {
-    this.selectedRange = type;
-    const end = new Date();
-    let start = new Date();
-
-    if (type === 'TODAY') {
-      start = new Date();
-      this.selectedPeriodLabel = 'Today (Hourly)';
-    } else if (type === '7D') {
-      start.setDate(end.getDate() - 7);
-      this.selectedPeriodLabel = 'Last 7 Days';
-    } else if (type === '30D') {
-      start.setDate(end.getDate() - 30);
-      this.selectedPeriodLabel = 'Last 30 Days';
-    } else if (type === 'YEAR') {
-      start = new Date(end.getFullYear(), 0, 1);
-      this.selectedPeriodLabel = 'This Year (12 Mo)';
-    }
-
-    this.startDate = start.toISOString().split('T')[0];
-    this.endDate = end.toISOString().split('T')[0];
-    this.loadReports();
-  }
-
-  shiftChartPage(direction: number): void {
-    const labels = ['Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026', 'This Year (12 Mo)'];
-    let idx = labels.indexOf(this.selectedPeriodLabel);
-    if (idx === -1) idx = 4;
-    idx = (idx + direction + labels.length) % labels.length;
-    this.selectedPeriodLabel = labels[idx];
-  }
-
-  loadReports(): void {
-    const params = `?startDate=${this.startDate}&endDate=${this.endDate}`;
-
-    this.http.get<any>(`${environment.apiUrl}/reports/profit-loss${params}`).subscribe({
-      next: (res) => {
-        this.pnl.set(res.data);
-        this.updateChartBarsFromData(res.data);
+    this.route.queryParams.subscribe(params => {
+      const tab = params['tab'];
+      if (tab && ['PL', 'EXPENSES', 'VALUATION', 'TENDER'].includes(tab)) {
+        this.activeTab = tab as any;
       }
     });
 
+    this.loadFinancialStatement();
+    this.loadOtherReports();
+  }
+
+  selectPeriodMode(mode: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | 'CUSTOM'): void {
+    this.selectedPeriodMode = mode;
+    this.loadFinancialStatement();
+  }
+
+  loadFinancialStatement(): void {
+    let url = `${environment.apiUrl}/reports/financial-statement?periodType=${this.selectedPeriodMode}&year=${this.selectedYear}`;
+    if (this.selectedPeriodMode === 'MONTHLY') {
+      url += `&month=${this.selectedMonth}`;
+    } else if (this.selectedPeriodMode === 'QUARTERLY') {
+      url += `&quarter=${this.selectedQuarter}`;
+    } else if (this.selectedPeriodMode === 'CUSTOM') {
+      url += `&startDate=${this.startDate}&endDate=${this.endDate}`;
+    }
+
+    this.http.get<any>(url).subscribe({
+      next: (res) => {
+        this.statement.set(res.data);
+        this.trendSeries = res.data?.trendSeries || [];
+      },
+      error: () => this.notificationService.error('Failed to load financial statement.')
+    });
+  }
+
+  loadOtherReports(): void {
     this.http.get<any>(`${environment.apiUrl}/reports/inventory-valuation`).subscribe({
       next: (res) => this.valuation.set(res.data)
     });
@@ -1634,109 +1283,118 @@ export class ReportsComponent implements OnInit {
     });
   }
 
-  updateChartBarsFromData(data: any): void {
-    if (!data || !data.totalRevenue) return;
-    const rev = data.totalRevenue;
-    const profit = data.grossProfit || 0;
-    
-    // Scale the active highlighted bar with the latest live report data
-    this.chartBars[7] = {
-      period: 'Aug',
-      revenue: rev,
-      profit: profit,
-      heightPct: Math.min(95, Math.max(30, Math.round((rev / (rev * 1.15)) * 90))),
-      highlighted: true
-    };
+  get expenseCategoriesSummary(): Array<{ key: string; amount: number }> {
+    const summary = this.statement()?.expensesByCategory || {};
+    return Object.keys(summary).filter(k => summary[k] > 0).map(k => ({ key: k, amount: summary[k] }));
+  }
+
+  formatCategoryName(cat: string): string {
+    if (!cat) return '';
+    return cat.replace(/_/g, ' ').replace(/\w\S*/g, (w) => (w.replace(/^\w/, (c) => c.toUpperCase())));
+  }
+
+  getCategoryOpExShare(amount: number): number {
+    const total = this.statement()?.totalOperatingExpenses || 0;
+    if (total <= 0) return 0;
+    return Math.round((amount / total) * 100);
+  }
+
+  getCategoryRevenueShare(amount: number): number {
+    const rev = this.statement()?.totalRevenue || 0;
+    if (rev <= 0) return 0;
+    return Math.round((amount / rev) * 1000) / 10;
+  }
+
+  getCategoryClassification(key: string): string {
+    switch (key) {
+      case 'RENT':
+      case 'UTILITIES':
+      case 'LICENSES_REGULATORY':
+      case 'TAXES_LEVIES':
+        return 'Fixed Overhead';
+      case 'SALARIES_PAYROLL':
+      case 'MAINTENANCE_REPAIRS':
+      case 'PACKAGING_CONSUMABLES':
+      case 'TRANSPORT_LOGISTICS':
+        return 'Operating Outflow';
+      case 'STOCK_LOSS_WRITE_OFF':
+        return 'Non-Operating Loss';
+      default:
+        return 'General Overhead';
+    }
   }
 
   downloadPdf(): void {
-    const params = `?startDate=${this.startDate}&endDate=${this.endDate}`;
+    const params = `?startDate=${this.statement()?.startDate || this.startDate}&endDate=${this.statement()?.endDate || this.endDate}`;
     window.open(`${environment.apiUrl}/reports/sales/pdf${params}`, '_blank');
   }
 
+  // Math & Percent Helpers
+  getBarHeightPct(val: number): number {
+    if (!val || val <= 0) return 4;
+    const maxVal = Math.max(...this.trendSeries.map(s => Math.max(s.revenue, s.expenses, s.grossProfit, 1)));
+    return Math.min(95, Math.max(8, Math.round((val / maxVal) * 90)));
+  }
+
   getCostPercent(): number {
-    const rev = this.pnl()?.totalRevenue || 0;
-    const cost = this.pnl()?.totalCostOfGoodsSold || 0;
-    if (rev <= 0) return 65; // standard pharmacy benchmark
+    const rev = this.statement()?.totalRevenue || 0;
+    const cost = this.statement()?.totalCostOfGoodsSold || 0;
+    if (rev <= 0) return 0;
     return Math.min(100, Math.round((cost / rev) * 100));
   }
 
-  getProfitPercent(): number {
-    const rev = this.pnl()?.totalRevenue || 0;
-    const prof = this.pnl()?.grossProfit || 0;
-    if (rev <= 0) return 35; // standard pharmacy benchmark
-    return Math.max(0, Math.min(100, Math.round((prof / rev) * 100)));
+  getOpExPercent(): number {
+    const rev = this.statement()?.totalRevenue || 0;
+    const opex = this.statement()?.totalOperatingExpenses || 0;
+    if (rev <= 0) return 0;
+    return Math.min(100, Math.round((opex / rev) * 100));
   }
 
-  getProfitDonutArray(): string {
-    const p = this.getProfitPercent();
-    return `${p} ${100 - p}`;
+  getLossPercent(): number {
+    const rev = this.statement()?.totalRevenue || 0;
+    const loss = this.statement()?.expiredStockLoss || 0;
+    if (rev <= 0) return 0;
+    return Math.min(100, Math.round((loss / rev) * 100));
+  }
+
+  getNetProfitDonutArray(): string {
+    const margin = Math.max(0, this.statement()?.netProfitMarginPercentage || 0);
+    return `${margin} ${Math.max(0, 100 - margin)}`;
+  }
+
+  getOpExDonutArray(): string {
+    const opex = this.getOpExPercent();
+    return `${opex} ${Math.max(0, 100 - opex)}`;
+  }
+
+  getNetProfitDonutOffset(): string {
+    const margin = Math.max(0, this.statement()?.netProfitMarginPercentage || 0);
+    return `${-margin}`;
   }
 
   getCostDonutArray(): string {
     const c = this.getCostPercent();
-    return `${c} ${100 - c}`;
+    return `${c} ${Math.max(0, 100 - c)}`;
   }
 
-  getCostDonutOffset(): string {
-    return `${-this.getProfitPercent()}`;
+  getCostDonutOffsetCalculated(): string {
+    const margin = Math.max(0, this.statement()?.netProfitMarginPercentage || 0);
+    const opex = this.getOpExPercent();
+    return `${-(margin + opex)}`;
   }
 
   getCashPercent(): number {
-    const total = this.cashierShift()?.totalRevenue || 0;
-    const cash = this.cashierShift()?.cashAmount || 0;
-    if (total <= 0) return 65;
-    return Math.round((cash / total) * 100);
+    const total = this.cashierShift()?.totalRevenue || 1;
+    return Math.round(((this.cashierShift()?.cashAmount || 0) / total) * 100);
   }
 
   getDigitalPercent(): number {
-    const total = this.cashierShift()?.totalRevenue || 0;
-    const digital = this.cashierShift()?.digitalAmount || 0;
-    if (total <= 0) return 25;
-    return Math.round((digital / total) * 100);
+    const total = this.cashierShift()?.totalRevenue || 1;
+    return Math.round(((this.cashierShift()?.digitalAmount || 0) / total) * 100);
   }
 
   getCardPercent(): number {
-    const total = this.cashierShift()?.totalRevenue || 0;
-    const card = this.cashierShift()?.cardOrBankAmount || 0;
-    if (total <= 0) return 10;
-    return Math.round((card / total) * 100);
-  }
-
-  getCashDonutArray(): string {
-    const p = this.getCashPercent();
-    return `${p} ${100 - p}`;
-  }
-
-  getDigitalDonutArray(): string {
-    const p = this.getDigitalPercent();
-    return `${p} ${100 - p}`;
-  }
-
-  getCashDonutOffset(): string {
-    return `${-this.getCashPercent()}`;
-  }
-
-  getCardDonutArray(): string {
-    const p = this.getCardPercent();
-    return `${p} ${100 - p}`;
-  }
-
-  getCardDonutOffset(): string {
-    return `${-(this.getCashPercent() + this.getDigitalPercent())}`;
-  }
-
-  getExpiryRiskPct(type: 'expired' | 'high' | 'medium' | 'watch'): number {
-    const total = (this.expiry()?.expiredCount || 0) +
-                  (this.expiry()?.expiring30DaysCount || 0) +
-                  (this.expiry()?.expiring60DaysCount || 0) +
-                  (this.expiry()?.expiring90DaysCount || 0);
-    if (total <= 0) return 25;
-    let count = 0;
-    if (type === 'expired') count = this.expiry()?.expiredCount || 0;
-    if (type === 'high') count = this.expiry()?.expiring30DaysCount || 0;
-    if (type === 'medium') count = this.expiry()?.expiring60DaysCount || 0;
-    if (type === 'watch') count = this.expiry()?.expiring90DaysCount || 0;
-    return Math.min(100, Math.max(10, Math.round((count / total) * 100)));
+    const total = this.cashierShift()?.totalRevenue || 1;
+    return Math.round(((this.cashierShift()?.cardOrBankAmount || 0) / total) * 100);
   }
 }

@@ -8,6 +8,7 @@ import com.pharmacy.pms.security.JwtTokenProvider;
 import com.pharmacy.pms.security.PmsUserPrincipal;
 import com.pharmacy.pms.service.AuthService;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -31,6 +32,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse login(LoginRequest request) {
+        User userRecord = userRepository.findByUsername(request.getUsername())
+                .or(() -> userRepository.findByEmail(request.getUsername()))
+                .orElse(null);
+
+        if (userRecord != null && !userRecord.isActive()) {
+            throw new DisabledException("Your staff account has been deactivated or suspended by the administrator. Please contact pharmacy management.");
+        }
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );

@@ -30,4 +30,9 @@ export class NotificationService {
   remove(id: string): void {
     this.notifications.update(list => list.filter(n => n.id !== id));
   }
+
+  clearAll(): void {
+    this.notifications.set([]);
+  }
 }
+

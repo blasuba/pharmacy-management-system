@@ -51,13 +51,15 @@ public class SecurityConfig {
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.getWriter().write("{\"success\":false,\"message\":\"Unauthorized: " + authException.getMessage() + "\"}");
+                    response.getWriter().write("{\"success\":false,\"message\":\"Session Expired: Your authentication credentials are invalid or have expired. Please sign in again.\",\"data\":null}");
                 })
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
                     response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                    response.getWriter().write("{\"success\":false,\"message\":\"Forbidden: Access Denied\"}");
+                    response.getWriter().write("{\"success\":false,\"message\":\"Permission Denied: You do not have authorization to access this feature or perform this operation. Please contact your pharmacy administrator.\",\"data\":null}");
                 })
             )
             .authorizeHttpRequests(auth -> auth

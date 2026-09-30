@@ -31,6 +31,11 @@ public class SystemSettingsRequest {
     @Min(value = 1, message = "Session warning time must be at least 1 minute")
     private Integer sessionWarningMinutes = 2;
 
+    private Boolean autoPrintReceipt = false;
+    private Boolean requireShiftOpen = false;
+    private Double maxDiscountPercent = 10.0;
+    private String defaultPaymentMethod = "CASH";
+
     public SystemSettingsRequest() {}
 
     public String getCurrency() { return currency; }
@@ -65,4 +70,16 @@ public class SystemSettingsRequest {
 
     public Integer getSessionWarningMinutes() { return sessionWarningMinutes; }
     public void setSessionWarningMinutes(Integer sessionWarningMinutes) { this.sessionWarningMinutes = sessionWarningMinutes; }
+
+    public Boolean getAutoPrintReceipt() { return autoPrintReceipt; }
+    public void setAutoPrintReceipt(Boolean autoPrintReceipt) { this.autoPrintReceipt = autoPrintReceipt; }
+
+    public Boolean getRequireShiftOpen() { return requireShiftOpen; }
+    public void setRequireShiftOpen(Boolean requireShiftOpen) { this.requireShiftOpen = requireShiftOpen; }
+
+    public Double getMaxDiscountPercent() { return maxDiscountPercent; }
+    public void setMaxDiscountPercent(Double maxDiscountPercent) { this.maxDiscountPercent = maxDiscountPercent; }
+
+    public String getDefaultPaymentMethod() { return defaultPaymentMethod; }
+    public void setDefaultPaymentMethod(String defaultPaymentMethod) { this.defaultPaymentMethod = defaultPaymentMethod; }
 }

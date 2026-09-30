@@ -36,6 +36,18 @@ public class ReportController {
         return ResponseEntity.ok(ApiResponse.success(reportService.getProfitAndLossReport(startDate, endDate)));
     }
 
+    @GetMapping("/financial-statement")
+    @PreAuthorize("hasAuthority('ROLE_OWNER') or hasAuthority('REPORT_PROFIT_VIEW')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getFinancialStatement(
+            @RequestParam(required = false, defaultValue = "MONTHLY") String periodType,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer quarter,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(ApiResponse.success(reportService.getComprehensiveFinancialStatement(periodType, year, quarter, month, startDate, endDate)));
+    }
+
     @GetMapping("/inventory-valuation")
     @PreAuthorize("hasAuthority('ROLE_OWNER') or hasAuthority('REPORT_PROFIT_VIEW')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getInventoryValuation() {

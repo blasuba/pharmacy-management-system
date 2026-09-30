@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { Router, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { NotificationService } from '../../core/services/notification.service';
 import { ConfirmationService } from '../../core/services/confirmation.service';
@@ -99,28 +100,28 @@ export interface MovementItem {
 
       <!-- Tab Navigation -->
       <div style="display: flex; gap: 8px; border-bottom: 2px solid var(--slate-200); padding-bottom: 8px; flex-wrap: wrap;">
-        <button (click)="activeTab.set('DRUGS')"
+        <button (click)="switchTab('DRUGS')"
                 [style.background]="activeTab() === 'DRUGS' ? '#0284c7' : 'transparent'"
                 [style.color]="activeTab() === 'DRUGS' ? '#fff' : 'var(--slate-600)'"
                 class="btn" style="padding: 8px 16px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
           <lucide-icon name="pill" [size]="15"></lucide-icon> Drug Catalog ({{ drugs().length }})
         </button>
 
-        <button (click)="activeTab.set('BATCHES')"
+        <button (click)="switchTab('BATCHES')"
                 [style.background]="activeTab() === 'BATCHES' ? '#0284c7' : 'transparent'"
                 [style.color]="activeTab() === 'BATCHES' ? '#fff' : 'var(--slate-600)'"
                 class="btn" style="padding: 8px 16px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
           <lucide-icon name="boxes" [size]="15"></lucide-icon> FEFO Batch Ledger
         </button>
 
-        <button (click)="activeTab.set('MOVEMENTS')"
+        <button (click)="switchTab('MOVEMENTS')"
                 [style.background]="activeTab() === 'MOVEMENTS' ? '#0284c7' : 'transparent'"
                 [style.color]="activeTab() === 'MOVEMENTS' ? '#fff' : 'var(--slate-600)'"
                 class="btn" style="padding: 8px 16px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
           <lucide-icon name="activity" [size]="15"></lucide-icon> Stock Ledger & Movements
         </button>
 
-        <button (click)="activeTab.set('CATEGORIES')"
+        <button (click)="switchTab('CATEGORIES')"
                 [style.background]="activeTab() === 'CATEGORIES' ? '#0284c7' : 'transparent'"
                 [style.color]="activeTab() === 'CATEGORIES' ? '#fff' : 'var(--slate-600)'"
                 class="btn" style="padding: 8px 16px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
@@ -1061,14 +1062,32 @@ export class InventoryComponent implements OnInit {
     private notificationService: NotificationService,
     private validationService: ValidationService,
     private confirmationService: ConfirmationService,
-    public authService: AuthService
+    public authService: AuthService,
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
+    this.route.queryParams.subscribe(params => {
+      const tab = params['tab'];
+      if (tab && ['DRUGS', 'BATCHES', 'MOVEMENTS', 'CATEGORIES'].includes(tab)) {
+        this.activeTab.set(tab as any);
+      }
+    });
+
     this.loadDrugs();
     this.loadCategories();
     this.loadSuppliers();
     this.loadMovements();
+  }
+
+  switchTab(tab: 'DRUGS' | 'BATCHES' | 'MOVEMENTS' | 'CATEGORIES'): void {
+    this.activeTab.set(tab);
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab },
+      queryParamsHandling: 'merge'
+    });
   }
 
   loadDrugs(): void {

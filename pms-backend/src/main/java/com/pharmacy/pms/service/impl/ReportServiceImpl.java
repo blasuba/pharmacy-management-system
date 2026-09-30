@@ -1,18 +1,18 @@
 package com.pharmacy.pms.service.impl;
 
-import com.lowagie.text.*;
+import com.lowagie.text.Document;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
+import com.lowagie.text.FontFactory;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.pharmacy.pms.dto.response.DashboardSummaryResponse;
 import com.pharmacy.pms.exception.ReportGenerationException;
-import com.pharmacy.pms.model.entity.Drug;
-import com.pharmacy.pms.model.entity.DrugBatch;
-import com.pharmacy.pms.model.entity.Sale;
-import com.pharmacy.pms.model.entity.SaleItem;
-import com.pharmacy.pms.repository.DrugBatchRepository;
-import com.pharmacy.pms.repository.DrugRepository;
-import com.pharmacy.pms.repository.SaleItemRepository;
-import com.pharmacy.pms.repository.SaleRepository;
+import com.pharmacy.pms.model.entity.*;
+import com.pharmacy.pms.model.enums.*;
+import com.pharmacy.pms.repository.*;
 import com.pharmacy.pms.service.ReportService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,9 +22,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class ReportServiceImpl implements ReportService {
@@ -33,12 +31,21 @@ public class ReportServiceImpl implements ReportService {
     private final SaleItemRepository saleItemRepository;
     private final DrugBatchRepository batchRepository;
     private final DrugRepository drugRepository;
+    private final ExpenseRepository expenseRepository;
+    private final PurchaseOrderRepository purchaseOrderRepository;
 
-    public ReportServiceImpl(SaleRepository saleRepository, SaleItemRepository saleItemRepository, DrugBatchRepository batchRepository, DrugRepository drugRepository) {
+    public ReportServiceImpl(SaleRepository saleRepository,
+                             SaleItemRepository saleItemRepository,
+                             DrugBatchRepository batchRepository,
+                             DrugRepository drugRepository,
+                             ExpenseRepository expenseRepository,
+                             PurchaseOrderRepository purchaseOrderRepository) {
         this.saleRepository = saleRepository;
         this.saleItemRepository = saleItemRepository;
         this.batchRepository = batchRepository;
         this.drugRepository = drugRepository;
+        this.expenseRepository = expenseRepository;
+        this.purchaseOrderRepository = purchaseOrderRepository;
     }
 
     @Override
@@ -108,6 +115,261 @@ public class ReportServiceImpl implements ReportService {
         report.put("totalCostOfGoodsSold", totalCost);
         report.put("grossProfit", grossProfit);
         report.put("profitMarginPercentage", totalRevenue.compareTo(BigDecimal.ZERO) > 0 ? grossProfit.divide(totalRevenue, 4, java.math.RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)) : BigDecimal.ZERO);
+
+        return report;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getComprehensiveFinancialStatement(String periodType, Integer year, Integer quarter, Integer month, LocalDate customStart, LocalDate customEnd) {
+        int curYear = (year != null && year > 2000) ? year : LocalDate.now().getYear();
+        LocalDate start;
+        LocalDate end;
+        String periodLabel;
+
+        String pType = (periodType != null ? periodType.toUpperCase().trim() : "MONTHLY");
+
+        switch (pType) {
+            case "DAILY" -> {
+                start = LocalDate.now();
+                end = LocalDate.now();
+                periodLabel = "Daily Financial Statement (" + start + ")";
+            }
+            case "WEEKLY" -> {
+                start = LocalDate.now().minusDays(6);
+                end = LocalDate.now();
+                periodLabel = "Past 7 Days (" + start + " to " + end + ")";
+            }
+            case "MONTHLY" -> {
+                int m = (month != null && month >= 1 && month <= 12) ? month : LocalDate.now().getMonthValue();
+                start = LocalDate.of(curYear, m, 1);
+                end = start.withDayOfMonth(start.lengthOfMonth());
+                periodLabel = start.getMonth().name() + " " + curYear + " Financial Statement";
+            }
+            case "QUARTERLY" -> {
+                int q = (quarter != null && quarter >= 1 && quarter <= 4) ? quarter : ((LocalDate.now().getMonthValue() - 1) / 3 + 1);
+                int startMonth = (q - 1) * 3 + 1;
+                int endMonth = startMonth + 2;
+                start = LocalDate.of(curYear, startMonth, 1);
+                LocalDate endMonthDate = LocalDate.of(curYear, endMonth, 1);
+                end = endMonthDate.withDayOfMonth(endMonthDate.lengthOfMonth());
+                periodLabel = "Q" + q + " (" + curYear + ") Financial Statement";
+            }
+            case "YEARLY" -> {
+                start = LocalDate.of(curYear, 1, 1);
+                end = LocalDate.of(curYear, 12, 31);
+                periodLabel = "Annual Financial Statement (" + curYear + ")";
+            }
+            case "CUSTOM" -> {
+                start = customStart != null ? customStart : LocalDate.now().minusDays(30);
+                end = customEnd != null ? customEnd : LocalDate.now();
+                periodLabel = "Custom Statement: " + start + " to " + end;
+            }
+            default -> {
+                start = LocalDate.now().withDayOfMonth(1);
+                end = LocalDate.now();
+                periodLabel = "Current Month Financial Statement";
+            }
+        }
+
+        LocalDateTime startDateTime = LocalDateTime.of(start, LocalTime.MIN);
+        LocalDateTime endDateTime = LocalDateTime.of(end, LocalTime.MAX);
+
+        // 1. Sales & Revenue
+        List<Sale> sales = saleRepository.findSalesBetweenDates(startDateTime, endDateTime);
+        List<SaleItem> saleItems = saleItemRepository.findSaleItemsBetweenDates(startDateTime, endDateTime);
+
+        BigDecimal grossRevenue = BigDecimal.ZERO;
+        BigDecimal totalDiscounts = BigDecimal.ZERO;
+        BigDecimal totalTaxCollected = BigDecimal.ZERO;
+        Map<String, BigDecimal> salesByPayment = new LinkedHashMap<>();
+        for (PaymentMethod pm : PaymentMethod.values()) {
+            salesByPayment.put(pm.name(), BigDecimal.ZERO);
+        }
+
+        for (Sale s : sales) {
+            grossRevenue = grossRevenue.add(s.getGrandTotal());
+            if (s.getDiscountAmount() != null) totalDiscounts = totalDiscounts.add(s.getDiscountAmount());
+            if (s.getTaxAmount() != null) totalTaxCollected = totalTaxCollected.add(s.getTaxAmount());
+            if (s.getPaymentMethod() != null) {
+                String pmName = s.getPaymentMethod().name();
+                salesByPayment.put(pmName, salesByPayment.getOrDefault(pmName, BigDecimal.ZERO).add(s.getGrandTotal()));
+            }
+        }
+
+        // 2. Cost of Goods Sold (COGS)
+        BigDecimal totalCostOfGoodsSold = BigDecimal.ZERO;
+        for (SaleItem item : saleItems) {
+            if (item.getCostPriceAtSale() != null) {
+                totalCostOfGoodsSold = totalCostOfGoodsSold.add(item.getCostPriceAtSale().multiply(BigDecimal.valueOf(item.getQuantity())));
+            }
+        }
+
+        BigDecimal grossProfit = grossRevenue.subtract(totalCostOfGoodsSold);
+        BigDecimal grossMarginPct = grossRevenue.compareTo(BigDecimal.ZERO) > 0
+                ? grossProfit.divide(grossRevenue, 4, java.math.RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
+                : BigDecimal.ZERO;
+
+        // 3. Operating Expenses
+        List<Expense> expenses = expenseRepository.findExpensesBetweenDates(start, end);
+        BigDecimal totalOperatingExpenses = BigDecimal.ZERO;
+        Map<String, BigDecimal> expensesByCategory = new LinkedHashMap<>();
+        for (ExpenseCategory cat : ExpenseCategory.values()) {
+            expensesByCategory.put(cat.name(), BigDecimal.ZERO);
+        }
+
+        for (Expense e : expenses) {
+            totalOperatingExpenses = totalOperatingExpenses.add(e.getAmount());
+            String catName = e.getCategory().name();
+            expensesByCategory.put(catName, expensesByCategory.getOrDefault(catName, BigDecimal.ZERO).add(e.getAmount()));
+        }
+
+        // 4. Procurement Purchases (PO/GRN)
+        List<PurchaseOrder> purchaseOrders = purchaseOrderRepository.findOrdersBetweenDates(start, end);
+        BigDecimal totalPurchases = BigDecimal.ZERO;
+        BigDecimal totalReceivedPurchases = BigDecimal.ZERO;
+        for (PurchaseOrder po : purchaseOrders) {
+            if (po.getTotalAmount() != null) {
+                totalPurchases = totalPurchases.add(po.getTotalAmount());
+                if (po.getStatus() == PurchaseStatus.RECEIVED) {
+                    totalReceivedPurchases = totalReceivedPurchases.add(po.getTotalAmount());
+                }
+            }
+        }
+
+        // 5. Expiry Risk & Inventory Losses
+        List<DrugBatch> expiredBatches = batchRepository.findExpiredBatches(LocalDate.now());
+        BigDecimal totalExpiredLossValuation = BigDecimal.ZERO;
+        for (DrugBatch b : expiredBatches) {
+            if (b.getBuyingPrice() != null && b.getQuantityOnHand() > 0) {
+                totalExpiredLossValuation = totalExpiredLossValuation.add(b.getBuyingPrice().multiply(BigDecimal.valueOf(b.getQuantityOnHand())));
+            }
+        }
+
+        // 6. Net Profit (Bottom line: Gross Profit - OpEx)
+        BigDecimal netOperatingProfit = grossProfit.subtract(totalOperatingExpenses);
+        BigDecimal netMarginPct = grossRevenue.compareTo(BigDecimal.ZERO) > 0
+                ? netOperatingProfit.divide(grossRevenue, 4, java.math.RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
+                : BigDecimal.ZERO;
+
+        // 7. Periodic Trend Series
+        List<Map<String, Object>> trendSeries = new ArrayList<>();
+        if (pType.equals("YEARLY")) {
+            for (int m = 1; m <= 12; m++) {
+                LocalDate mStart = LocalDate.of(curYear, m, 1);
+                LocalDate mEnd = mStart.withDayOfMonth(mStart.lengthOfMonth());
+                LocalDateTime mStartDT = LocalDateTime.of(mStart, LocalTime.MIN);
+                LocalDateTime mEndDT = LocalDateTime.of(mEnd, LocalTime.MAX);
+
+                BigDecimal mRev = saleRepository.findSalesBetweenDates(mStartDT, mEndDT).stream().map(Sale::getGrandTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal mCogs = saleItemRepository.findSaleItemsBetweenDates(mStartDT, mEndDT).stream().map(i -> (i.getCostPriceAtSale() != null ? i.getCostPriceAtSale() : BigDecimal.ZERO).multiply(BigDecimal.valueOf(i.getQuantity()))).reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal mExp = expenseRepository.sumExpensesBetweenDates(mStart, mEnd);
+                if (mExp == null) mExp = BigDecimal.ZERO;
+                BigDecimal mPurch = purchaseOrderRepository.sumTotalPurchasesBetweenDates(mStart, mEnd);
+                if (mPurch == null) mPurch = BigDecimal.ZERO;
+                BigDecimal mGross = mRev.subtract(mCogs);
+                BigDecimal mNet = mGross.subtract(mExp);
+
+                Map<String, Object> slot = new HashMap<>();
+                slot.put("periodName", mStart.getMonth().name().substring(0, 3));
+                slot.put("revenue", mRev);
+                slot.put("cogs", mCogs);
+                slot.put("grossProfit", mGross);
+                slot.put("expenses", mExp);
+                slot.put("purchases", mPurch);
+                slot.put("netProfit", mNet);
+                trendSeries.add(slot);
+            }
+        } else if (pType.equals("QUARTERLY")) {
+            int q = (quarter != null && quarter >= 1 && quarter <= 4) ? quarter : ((LocalDate.now().getMonthValue() - 1) / 3 + 1);
+            int startMonth = (q - 1) * 3 + 1;
+            for (int m = startMonth; m <= startMonth + 2; m++) {
+                LocalDate mStart = LocalDate.of(curYear, m, 1);
+                LocalDate mEnd = mStart.withDayOfMonth(mStart.lengthOfMonth());
+                LocalDateTime mStartDT = LocalDateTime.of(mStart, LocalTime.MIN);
+                LocalDateTime mEndDT = LocalDateTime.of(mEnd, LocalTime.MAX);
+
+                BigDecimal mRev = saleRepository.findSalesBetweenDates(mStartDT, mEndDT).stream().map(Sale::getGrandTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal mCogs = saleItemRepository.findSaleItemsBetweenDates(mStartDT, mEndDT).stream().map(i -> (i.getCostPriceAtSale() != null ? i.getCostPriceAtSale() : BigDecimal.ZERO).multiply(BigDecimal.valueOf(i.getQuantity()))).reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal mExp = expenseRepository.sumExpensesBetweenDates(mStart, mEnd);
+                if (mExp == null) mExp = BigDecimal.ZERO;
+                BigDecimal mGross = mRev.subtract(mCogs);
+                BigDecimal mNet = mGross.subtract(mExp);
+
+                Map<String, Object> slot = new HashMap<>();
+                slot.put("periodName", mStart.getMonth().name());
+                slot.put("revenue", mRev);
+                slot.put("cogs", mCogs);
+                slot.put("grossProfit", mGross);
+                slot.put("expenses", mExp);
+                slot.put("netProfit", mNet);
+                trendSeries.add(slot);
+            }
+        } else {
+            LocalDate ptr = start;
+            while (!ptr.isAfter(end)) {
+                LocalDateTime dStartDT = LocalDateTime.of(ptr, LocalTime.MIN);
+                LocalDateTime dEndDT = LocalDateTime.of(ptr, LocalTime.MAX);
+
+                BigDecimal dRev = saleRepository.findSalesBetweenDates(dStartDT, dEndDT).stream().map(Sale::getGrandTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal dCogs = saleItemRepository.findSaleItemsBetweenDates(dStartDT, dEndDT).stream().map(i -> (i.getCostPriceAtSale() != null ? i.getCostPriceAtSale() : BigDecimal.ZERO).multiply(BigDecimal.valueOf(i.getQuantity()))).reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal dExp = expenseRepository.sumExpensesBetweenDates(ptr, ptr);
+                if (dExp == null) dExp = BigDecimal.ZERO;
+                BigDecimal dGross = dRev.subtract(dCogs);
+                BigDecimal dNet = dGross.subtract(dExp);
+
+                Map<String, Object> slot = new HashMap<>();
+                slot.put("periodName", ptr.getDayOfMonth() + " " + ptr.getMonth().name().substring(0, 3));
+                slot.put("date", ptr.toString());
+                slot.put("revenue", dRev);
+                slot.put("cogs", dCogs);
+                slot.put("grossProfit", dGross);
+                slot.put("expenses", dExp);
+                slot.put("netProfit", dNet);
+                trendSeries.add(slot);
+
+                ptr = ptr.plusDays(1);
+            }
+        }
+
+        Map<String, Object> report = new LinkedHashMap<>();
+        report.put("periodType", pType);
+        report.put("periodLabel", periodLabel);
+        report.put("startDate", start);
+        report.put("endDate", end);
+        report.put("year", curYear);
+
+        // Revenue
+        report.put("totalRevenue", grossRevenue);
+        report.put("totalSalesCount", sales.size());
+        report.put("totalDiscounts", totalDiscounts);
+        report.put("totalTaxCollected", totalTaxCollected);
+        report.put("salesByPaymentMethod", salesByPayment);
+
+        // COGS & Gross Profit
+        report.put("totalCostOfGoodsSold", totalCostOfGoodsSold);
+        report.put("grossProfit", grossProfit);
+        report.put("grossMarginPercentage", grossMarginPct);
+
+        // Operating Expenses
+        report.put("totalOperatingExpenses", totalOperatingExpenses);
+        report.put("expensesCount", expenses.size());
+        report.put("expensesByCategory", expensesByCategory);
+
+        // Purchases / Procurement
+        report.put("totalPurchases", totalPurchases);
+        report.put("totalReceivedPurchases", totalReceivedPurchases);
+        report.put("purchasesCount", purchaseOrders.size());
+
+        // Losses
+        report.put("expiredStockLoss", totalExpiredLossValuation);
+
+        // Net Profit
+        report.put("netOperatingProfit", netOperatingProfit);
+        report.put("netProfitMarginPercentage", netMarginPct);
+
+        // Periodic trends
+        report.put("trendSeries", trendSeries);
 
         return report;
     }

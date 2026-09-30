@@ -103,7 +103,9 @@ import {
   Send,
   Server,
   HardDrive,
-  Folder
+  Folder,
+  LayoutGrid,
+  List
 } from 'lucide-angular';
 
 export const appConfig: ApplicationConfig = {
@@ -210,7 +212,9 @@ export const appConfig: ApplicationConfig = {
       Send,
       Server,
       HardDrive,
-      Folder
+      Folder,
+      LayoutGrid,
+      List
     }))
   ]
 };

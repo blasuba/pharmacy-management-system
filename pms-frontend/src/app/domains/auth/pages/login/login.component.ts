@@ -31,13 +31,26 @@ import { NotificationService } from '../../../../core/services/notification.serv
           </div>
         </div>
 
+        <!-- Prominent In-Card Error Alert Banner -->
+        <div *ngIf="errorMessage()" 
+             style="margin-bottom: 20px; padding: 12px 16px; border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca; display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: #991b1b; animation: shake 0.3s ease-in-out;">
+          <lucide-icon name="alert-circle" [size]="18" color="#dc2626" style="flex-shrink: 0; margin-top: 2px;"></lucide-icon>
+          <div style="flex: 1;">
+            <strong style="display: block; font-size: 13px; font-weight: 700; color: #7f1d1d; margin-bottom: 2px;">
+              Authentication Error
+            </strong>
+            <span>{{ errorMessage() }}</span>
+          </div>
+          <button type="button" (click)="errorMessage.set(null)" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 16px; padding: 0 4px;" title="Dismiss">✕</button>
+        </div>
+
         <form (ngSubmit)="handleLogin()">
           <div style="margin-bottom: 18px;">
             <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">
               <lucide-icon name="user" [size]="14" color="#64748b"></lucide-icon>
               Username or Email
             </label>
-            <input type="text" [(ngModel)]="username" name="username" class="form-control" placeholder="e.g. admin, pharmacist, cashier" required autofocus />
+            <input type="text" [(ngModel)]="username" (input)="errorMessage.set(null)" name="username" class="form-control" placeholder="e.g. admin, pharmacist, cashier" required autofocus />
           </div>
 
           <div style="margin-bottom: 24px;">
@@ -45,32 +58,48 @@ import { NotificationService } from '../../../../core/services/notification.serv
               <lucide-icon name="lock" [size]="14" color="#64748b"></lucide-icon>
               Password
             </label>
-            <input type="password" [(ngModel)]="password" name="password" class="form-control" placeholder="••••••••" required />
+            <div style="position: relative;">
+              <input 
+                [type]="showPassword() ? 'text' : 'password'" 
+                [(ngModel)]="password" 
+                (input)="errorMessage.set(null)" 
+                name="password" 
+                class="form-control" 
+                placeholder="••••••••" 
+                style="padding-right: 42px;"
+                required />
+              <button 
+                type="button" 
+                (click)="showPassword.set(!showPassword())" 
+                style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 4px; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center;"
+                [title]="showPassword() ? 'Hide password' : 'Show password'">
+                <lucide-icon [name]="showPassword() ? 'eye-off' : 'eye'" [size]="17"></lucide-icon>
+              </button>
+            </div>
           </div>
 
-          <button type="submit" [disabled]="loading()" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <span>{{ loading() ? 'Authenticating...' : 'Sign In to Terminal' }}</span>
+          <button type="submit" [disabled]="loading()" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700;">
+            <span>{{ loading() ? 'Authenticating Credentials...' : 'Sign In to Terminal' }}</span>
             <lucide-icon *ngIf="!loading()" name="arrow-right" [size]="16"></lucide-icon>
           </button>
         </form>
-
-        <div style="margin-top: 24px; padding: 14px; background: #f8fafc; border-radius: 10px; border: 1px dashed #cbd5e1; font-size: 12px; color: #475569;">
-          <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: #334155; margin-bottom: 6px;">
-            <lucide-icon name="shield-check" [size]="15" color="#0284c7"></lucide-icon>
-            Quick Demo Accounts:
-          </div>
-          • <code>admin</code> / <code>Admin&#64;123</code> (Full Owner)<br>
-          • <code>pharmacist</code> / <code>Pharm&#64;123</code> (Dispensing/Batches)<br>
-          • <code>cashier</code> / <code>Cash&#64;123</code> (POS Sales/Receipts)
-        </div>
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+  `]
 })
 export class LoginComponent implements OnInit {
   username = '';
   password = '';
+  showPassword = signal(false);
   loading = signal(false);
+  errorMessage = signal<string | null>(null);
   timeoutReason = signal<string | null>(null);
 
   constructor(
@@ -88,22 +117,38 @@ export class LoginComponent implements OnInit {
   }
 
   handleLogin(): void {
-    if (!this.username || !this.password) {
+    this.errorMessage.set(null);
+
+    if (!this.username?.trim() || !this.password?.trim()) {
+      this.errorMessage.set('Please enter both username/email and password.');
       this.notificationService.warning('Please enter both username and password');
       return;
     }
 
     this.loading.set(true);
-    this.authService.login({ username: this.username, password: this.password }).subscribe({
+    this.authService.login({ username: this.username.trim(), password: this.password }).subscribe({
       next: (res) => {
         this.loading.set(false);
+        this.notificationService.clearAll();
         this.notificationService.success(`Welcome back, ${res.data.fullName}!`);
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {
         this.loading.set(false);
-        this.notificationService.error(err.error?.message || 'Login failed. Please verify credentials.');
+        let msg = '';
+        if (err.status === 0) {
+          msg = 'Unable to connect to the pharmacy backend server. Please verify network connection or ensure the server is online.';
+        } else if (err.status === 403 || (err.error?.message && err.error.message.toLowerCase().includes('suspended')) || (err.error?.message && err.error.message.toLowerCase().includes('deactivated'))) {
+          msg = err.error?.message || 'Your staff account has been deactivated or suspended by the administrator. Please contact pharmacy management.';
+        } else if (err.status === 401) {
+          msg = err.error?.message || 'Invalid username or password. Please verify your credentials.';
+        } else {
+          msg = err.error?.message || 'Authentication failed. Please check your credentials or contact system support.';
+        }
+
+        this.errorMessage.set(msg);
       }
     });
   }
 }
+

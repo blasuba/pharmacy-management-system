@@ -7,6 +7,7 @@ import java.util.Map;
 public interface ReportService {
     DashboardSummaryResponse getDashboardSummary();
     Map<String, Object> getProfitAndLossReport(LocalDate startDate, LocalDate endDate);
+    Map<String, Object> getComprehensiveFinancialStatement(String periodType, Integer year, Integer quarter, Integer month, LocalDate customStart, LocalDate customEnd);
     Map<String, Object> getInventoryValuationReport();
     Map<String, Object> getExpiryRiskReport();
     Map<String, Object> getCashierShiftSummary(Long cashierId);

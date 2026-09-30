@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
+import { Router, ActivatedRoute } from '@angular/router';
 import { SettingsService, PharmacyProfile, SystemSettings, TaxConfig, NotificationSettings, BackupSchedule, RbacMatrix, UserItem, AuditLog, SystemInfo } from '../../core/services/settings.service';
 import { AuthService } from '../../core/auth/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -406,6 +407,53 @@ import { ConfirmationService } from '../../core/services/confirmation.service';
             <input type="text" [(ngModel)]="systemSettings.receiptFooter" name="receiptFooter" class="form-control" placeholder="Thank you for visiting Bunna Pharmacy! Get well soon!" />
           </div>
 
+          <!-- POS Checkout & Cash Management Policy -->
+          <div style="grid-column: 1 / -1; padding: 18px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+              <lucide-icon name="shopping-cart" [size]="18" color="#0284c7"></lucide-icon>
+              <div>
+                <h4 style="font-size: 14px; font-weight: 700; color: #0f172a; margin: 0;">POS Sales & Cashier Control Policies</h4>
+                <p style="font-size: 11.5px; color: #64748b; margin: 2px 0 0;">Control cashier discounting limits, drawer enforcement, and printing automation.</p>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label">Default Payment Method</label>
+                <select [(ngModel)]="systemSettings.defaultPaymentMethod" name="defaultPaymentMethod" class="form-control">
+                  <option value="CASH">Cash</option>
+                  <option value="TELEBIRR">Telebirr</option>
+                  <option value="CBE_BIRR">CBE Birr</option>
+                  <option value="CARD">Bank Card / POS</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                </select>
+                <span style="font-size: 11px; color: #64748b;">Pre-selected method when opening checkout modal</span>
+              </div>
+
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label">Max Cashier Discount (%) <span class="text-danger">*</span></label>
+                <input type="number" [(ngModel)]="systemSettings.maxDiscountPercent" name="maxDiscountPercent" min="0" max="100" step="0.5" class="form-control" required />
+                <span style="font-size: 11px; color: #64748b;">Maximum % discount a cashier can apply without manager PIN</span>
+              </div>
+
+              <div class="form-group" style="margin: 0; display: flex; flex-direction: column; justify-content: center;">
+                <label class="form-label">Receipt Auto-Print</label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-top: 4px;">
+                  <input type="checkbox" [(ngModel)]="systemSettings.autoPrintReceipt" name="autoPrintReceipt" style="width: 17px; height: 17px; accent-color: #0284c7;" />
+                  <span style="font-size: 12.5px; font-weight: 600; color: #334155;">Auto-trigger receipt print on checkout</span>
+                </label>
+              </div>
+
+              <div class="form-group" style="margin: 0; display: flex; flex-direction: column; justify-content: center;">
+                <label class="form-label">Enforce Shift Opening</label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-top: 4px;">
+                  <input type="checkbox" [(ngModel)]="systemSettings.requireShiftOpen" name="requireShiftOpen" style="width: 17px; height: 17px; accent-color: #0284c7;" />
+                  <span style="font-size: 12.5px; font-weight: 600; color: #334155;">Require active cash shift to dispense</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
           <!-- Security & Session Inactivity Policy -->
           <div style="grid-column: 1 / -1; margin-top: 6px; padding: 18px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
@@ -592,11 +640,49 @@ import { ConfirmationService } from '../../core/services/confirmation.service';
             <div style="font-size: 11px; color: #8b5cf6; margin-top: 2px;">{{ systemInfo?.freeMemoryMb }} MB free of {{ systemInfo?.maxMemoryMb }} MB max</div>
           </div>
           <div class="card" style="padding: 16px; border-left: 4px solid #f59e0b;">
-            <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Active Records</div>
+            <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Indexed System Records</div>
             <div style="font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 4px;">
-              {{ (systemInfo?.details?.['totalDrugsCount'] || 0) + (systemInfo?.details?.['totalSalesCount'] || 0) }}
+              {{ (systemInfo?.details?.['totalDrugsCount'] || 0) + (systemInfo?.details?.['totalBatchesCount'] || 0) + (systemInfo?.details?.['totalSalesCount'] || 0) + (systemInfo?.details?.['totalExpensesCount'] || 0) + (systemInfo?.details?.['totalPurchasesCount'] || 0) }} Records
             </div>
-            <div style="font-size: 11px; color: #f59e0b; margin-top: 2px;">Drugs & Invoices indexed</div>
+            <div style="font-size: 11px; color: #f59e0b; margin-top: 2px;">
+              {{ systemInfo?.details?.['totalExpensesCount'] || 0 }} exp • {{ systemInfo?.details?.['totalPurchasesCount'] || 0 }} po • {{ systemInfo?.details?.['totalBatchesCount'] || 0 }} batches
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Modules Count Breakdown -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
+          <div style="padding: 10px 14px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+            <div style="font-size: 11px; color: #64748b; font-weight: 600;">Drugs Catalog</div>
+            <div style="font-size: 16px; font-weight: 800; color: #0284c7;">{{ systemInfo?.details?.['totalDrugsCount'] || 0 }}</div>
+          </div>
+          <div style="padding: 10px 14px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+            <div style="font-size: 11px; color: #64748b; font-weight: 600;">Stock Batches</div>
+            <div style="font-size: 16px; font-weight: 800; color: #10b981;">{{ systemInfo?.details?.['totalBatchesCount'] || 0 }}</div>
+          </div>
+          <div style="padding: 10px 14px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+            <div style="font-size: 11px; color: #64748b; font-weight: 600;">Sales Invoices</div>
+            <div style="font-size: 16px; font-weight: 800; color: #8b5cf6;">{{ systemInfo?.details?.['totalSalesCount'] || 0 }}</div>
+          </div>
+          <div style="padding: 10px 14px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+            <div style="font-size: 11px; color: #64748b; font-weight: 600;">Expenses</div>
+            <div style="font-size: 16px; font-weight: 800; color: #ef4444;">{{ systemInfo?.details?.['totalExpensesCount'] || 0 }}</div>
+          </div>
+          <div style="padding: 10px 14px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+            <div style="font-size: 11px; color: #64748b; font-weight: 600;">Purchases (PO)</div>
+            <div style="font-size: 16px; font-weight: 800; color: #f59e0b;">{{ systemInfo?.details?.['totalPurchasesCount'] || 0 }}</div>
+          </div>
+          <div style="padding: 10px 14px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+            <div style="font-size: 11px; color: #64748b; font-weight: 600;">Suppliers</div>
+            <div style="font-size: 16px; font-weight: 800; color: #0284c7;">{{ systemInfo?.details?.['totalSuppliersCount'] || 0 }}</div>
+          </div>
+          <div style="padding: 10px 14px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+            <div style="font-size: 11px; color: #64748b; font-weight: 600;">Customers</div>
+            <div style="font-size: 16px; font-weight: 800; color: #0d9488;">{{ systemInfo?.details?.['totalCustomersCount'] || 0 }}</div>
+          </div>
+          <div style="padding: 10px 14px; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+            <div style="font-size: 11px; color: #64748b; font-weight: 600;">Fixed Assets</div>
+            <div style="font-size: 16px; font-weight: 800; color: #6366f1;">{{ systemInfo?.details?.['totalAssetsCount'] || 0 }}</div>
           </div>
         </div>
 
@@ -644,13 +730,19 @@ import { ConfirmationService } from '../../core/services/confirmation.service';
           <div class="card" style="padding: 20px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
               <lucide-icon name="file-spreadsheet" [size]="20" color="#8b5cf6"></lucide-icon>
-              <h3 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0;">Export Datasets</h3>
+              <h3 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0;">Export Datasets to CSV</h3>
             </div>
-            <p style="font-size: 12px; color: #64748b; margin: 0 0 16px;">Export tables to standard CSV format for audits, accounting, and spreadsheets.</p>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button (click)="exportCsv('users')" class="btn btn-outline" style="font-size: 12px; padding: 6px 10px;">Export Users</button>
-              <button (click)="exportCsv('drugs')" class="btn btn-outline" style="font-size: 12px; padding: 6px 10px;">Export Drugs</button>
-              <button (click)="exportCsv('sales')" class="btn btn-outline" style="font-size: 12px; padding: 6px 10px;">Export Sales</button>
+            <p style="font-size: 12px; color: #64748b; margin: 0 0 14px;">Export raw data tables to CSV format for audits, accounting, and spreadsheets.</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px;">
+              <button (click)="exportCsv('users')" class="btn btn-outline" style="font-size: 11.5px; padding: 6px 8px;">Users</button>
+              <button (click)="exportCsv('drugs')" class="btn btn-outline" style="font-size: 11.5px; padding: 6px 8px;">Drugs</button>
+              <button (click)="exportCsv('batches')" class="btn btn-outline" style="font-size: 11.5px; padding: 6px 8px;">Batches</button>
+              <button (click)="exportCsv('sales')" class="btn btn-outline" style="font-size: 11.5px; padding: 6px 8px;">Sales</button>
+              <button (click)="exportCsv('expenses')" class="btn btn-outline" style="font-size: 11.5px; padding: 6px 8px;">Expenses</button>
+              <button (click)="exportCsv('purchases')" class="btn btn-outline" style="font-size: 11.5px; padding: 6px 8px;">Purchases</button>
+              <button (click)="exportCsv('suppliers')" class="btn btn-outline" style="font-size: 11.5px; padding: 6px 8px;">Suppliers</button>
+              <button (click)="exportCsv('customers')" class="btn btn-outline" style="font-size: 11.5px; padding: 6px 8px;">Customers</button>
+              <button (click)="exportCsv('assets')" class="btn btn-outline" style="font-size: 11.5px; padding: 6px 8px;">Fixed Assets</button>
             </div>
           </div>
         </div>
@@ -925,7 +1017,11 @@ export class SettingsComponent implements OnInit {
     lowStockThreshold: 20,
     expiryAlertDays: 30,
     sessionTimeoutMinutes: 15,
-    sessionWarningMinutes: 2
+    sessionWarningMinutes: 2,
+    autoPrintReceipt: false,
+    requireShiftOpen: false,
+    maxDiscountPercent: 10.0,
+    defaultPaymentMethod: 'CASH'
   };
 
   // Tab 6: Notifications
@@ -950,14 +1046,32 @@ export class SettingsComponent implements OnInit {
     private settingsService: SettingsService,
     public authService: AuthService,
     private notif: NotificationService,
-    private confirmService: ConfirmationService
+    private confirmService: ConfirmationService,
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
-    this.loadProfile();
+    this.route.queryParams.subscribe(params => {
+      const tab = params['tab'];
+      if (tab && this.tabs.some(t => t.id === tab)) {
+        this.activeTab = tab;
+      }
+      this.loadTabContent(this.activeTab);
+    });
   }
 
   onTabChange(tabId: string): void {
+    this.activeTab = tabId;
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: tabId },
+      queryParamsHandling: 'merge'
+    });
+    this.loadTabContent(tabId);
+  }
+
+  loadTabContent(tabId: string): void {
     switch (tabId) {
       case 'profile': this.loadProfile(); break;
       case 'users': this.loadUsers(); break;
@@ -970,7 +1084,7 @@ export class SettingsComponent implements OnInit {
   }
 
   refreshCurrentTab(): void {
-    this.onTabChange(this.activeTab);
+    this.loadTabContent(this.activeTab);
   }
 
   // 1. Profile Methods

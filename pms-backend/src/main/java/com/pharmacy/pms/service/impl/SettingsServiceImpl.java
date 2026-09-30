@@ -49,7 +49,13 @@ public class SettingsServiceImpl implements SettingsService {
     private final PermissionRepository permissionRepository;
     private final BranchRepository branchRepository;
     private final DrugRepository drugRepository;
+    private final DrugBatchRepository drugBatchRepository;
     private final SaleRepository saleRepository;
+    private final ExpenseRepository expenseRepository;
+    private final PurchaseOrderRepository purchaseOrderRepository;
+    private final SupplierRepository supplierRepository;
+    private final CustomerRepository customerRepository;
+    private final FixedAssetRepository fixedAssetRepository;
     private final AuditLogRepository auditLogRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -63,7 +69,13 @@ public class SettingsServiceImpl implements SettingsService {
                                PermissionRepository permissionRepository,
                                BranchRepository branchRepository,
                                DrugRepository drugRepository,
+                               DrugBatchRepository drugBatchRepository,
                                SaleRepository saleRepository,
+                               ExpenseRepository expenseRepository,
+                               PurchaseOrderRepository purchaseOrderRepository,
+                               SupplierRepository supplierRepository,
+                               CustomerRepository customerRepository,
+                               FixedAssetRepository fixedAssetRepository,
                                AuditLogRepository auditLogRepository,
                                PasswordEncoder passwordEncoder) {
         this.profileRepository = profileRepository;
@@ -76,7 +88,13 @@ public class SettingsServiceImpl implements SettingsService {
         this.permissionRepository = permissionRepository;
         this.branchRepository = branchRepository;
         this.drugRepository = drugRepository;
+        this.drugBatchRepository = drugBatchRepository;
         this.saleRepository = saleRepository;
+        this.expenseRepository = expenseRepository;
+        this.purchaseOrderRepository = purchaseOrderRepository;
+        this.supplierRepository = supplierRepository;
+        this.customerRepository = customerRepository;
+        this.fixedAssetRepository = fixedAssetRepository;
         this.auditLogRepository = auditLogRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -415,6 +433,18 @@ public class SettingsServiceImpl implements SettingsService {
         if (request.getSessionWarningMinutes() != null && request.getSessionWarningMinutes() >= 1) {
             settings.setSessionWarningMinutes(request.getSessionWarningMinutes());
         }
+        if (request.getAutoPrintReceipt() != null) {
+            settings.setAutoPrintReceipt(request.getAutoPrintReceipt());
+        }
+        if (request.getRequireShiftOpen() != null) {
+            settings.setRequireShiftOpen(request.getRequireShiftOpen());
+        }
+        if (request.getMaxDiscountPercent() != null && request.getMaxDiscountPercent() >= 0) {
+            settings.setMaxDiscountPercent(request.getMaxDiscountPercent());
+        }
+        if (request.getDefaultPaymentMethod() != null && !request.getDefaultPaymentMethod().isBlank()) {
+            settings.setDefaultPaymentMethod(request.getDefaultPaymentMethod().trim().toUpperCase());
+        }
 
         SystemSettings saved = systemSettingsRepository.save(settings);
         logAudit(currentUserId, "UPDATE_SYSTEM_SETTINGS", "SystemSettings", String.valueOf(saved.getId()), "Updated system preferences");
@@ -526,7 +556,13 @@ public class SettingsServiceImpl implements SettingsService {
 
         sql.append("-- Table: users count = ").append(userRepository.count()).append("\n");
         sql.append("-- Table: drugs count = ").append(drugRepository.count()).append("\n");
+        sql.append("-- Table: batches count = ").append(drugBatchRepository.count()).append("\n");
         sql.append("-- Table: sales count = ").append(saleRepository.count()).append("\n");
+        sql.append("-- Table: expenses count = ").append(expenseRepository.count()).append("\n");
+        sql.append("-- Table: purchases count = ").append(purchaseOrderRepository.count()).append("\n");
+        sql.append("-- Table: suppliers count = ").append(supplierRepository.count()).append("\n");
+        sql.append("-- Table: customers count = ").append(customerRepository.count()).append("\n");
+        sql.append("-- Table: assets count = ").append(fixedAssetRepository.count()).append("\n");
         sql.append("-- Dump completed successfully.\n");
 
         return sql.toString().getBytes(StandardCharsets.UTF_8);
@@ -576,6 +612,20 @@ public class SettingsServiceImpl implements SettingsService {
                             .append(d.getCreatedAt()).append("\n");
                 }
             }
+            case "batches", "inventory" -> {
+                csv.append("ID,DrugName,GenericName,BatchNumber,ExpiryDate,QuantityOnHand,BuyingPrice,RetailPrice,Supplier\n");
+                for (DrugBatch b : drugBatchRepository.findAll()) {
+                    csv.append(b.getId()).append(",")
+                            .append(escapeCsv(b.getDrug() != null ? b.getDrug().getName() : "")).append(",")
+                            .append(escapeCsv(b.getDrug() != null ? b.getDrug().getGenericName() : "")).append(",")
+                            .append(escapeCsv(b.getBatchNumber())).append(",")
+                            .append(b.getExpiryDate()).append(",")
+                            .append(b.getQuantityOnHand()).append(",")
+                            .append(b.getBuyingPrice()).append(",")
+                            .append(b.getRetailPrice()).append(",")
+                            .append(escapeCsv(b.getSupplier() != null ? b.getSupplier().getName() : "")).append("\n");
+                }
+            }
             case "sales" -> {
                 csv.append("ID,InvoiceNumber,GrandTotal,PaymentMethod,RefundStatus,CreatedAt\n");
                 for (Sale s : saleRepository.findAll()) {
@@ -585,6 +635,72 @@ public class SettingsServiceImpl implements SettingsService {
                             .append(s.getPaymentMethod()).append(",")
                             .append(s.getRefundStatus()).append(",")
                             .append(s.getCreatedAt()).append("\n");
+                }
+            }
+            case "expenses" -> {
+                csv.append("ID,Title,Category,Amount,PaymentMethod,ReceiptNumber,Vendor,ExpenseDate,Notes\n");
+                for (Expense e : expenseRepository.findAll()) {
+                    csv.append(e.getId()).append(",")
+                            .append(escapeCsv(e.getTitle())).append(",")
+                            .append(e.getCategory()).append(",")
+                            .append(e.getAmount()).append(",")
+                            .append(e.getPaymentMethod()).append(",")
+                            .append(escapeCsv(e.getReceiptNumber())).append(",")
+                            .append(escapeCsv(e.getVendorOrPayee())).append(",")
+                            .append(e.getExpenseDate()).append(",")
+                            .append(escapeCsv(e.getNotes())).append("\n");
+                }
+            }
+            case "purchases" -> {
+                csv.append("ID,PoNumber,Supplier,OrderDate,Status,TotalAmount,PaidAmount,Notes\n");
+                for (PurchaseOrder po : purchaseOrderRepository.findAll()) {
+                    csv.append(po.getId()).append(",")
+                            .append(escapeCsv(po.getPoNumber())).append(",")
+                            .append(escapeCsv(po.getSupplier() != null ? po.getSupplier().getName() : "")).append(",")
+                            .append(po.getOrderDate()).append(",")
+                            .append(po.getStatus()).append(",")
+                            .append(po.getTotalAmount()).append(",")
+                            .append(po.getPaidAmount()).append(",")
+                            .append(escapeCsv(po.getNotes())).append("\n");
+                }
+            }
+            case "suppliers" -> {
+                csv.append("ID,Name,ContactPerson,Phone,Email,TIN,PaymentTermsDays,Address\n");
+                for (Supplier s : supplierRepository.findAll()) {
+                    csv.append(s.getId()).append(",")
+                            .append(escapeCsv(s.getName())).append(",")
+                            .append(escapeCsv(s.getContactPerson())).append(",")
+                            .append(escapeCsv(s.getPhone())).append(",")
+                            .append(escapeCsv(s.getEmail())).append(",")
+                            .append(escapeCsv(s.getTaxNumber())).append(",")
+                            .append(s.getPaymentTermsDays()).append(",")
+                            .append(escapeCsv(s.getAddress())).append("\n");
+                }
+            }
+            case "customers" -> {
+                csv.append("ID,Name,Phone,Email,CustomerType,CreditLimit,CurrentBalance\n");
+                for (Customer c : customerRepository.findAll()) {
+                    csv.append(c.getId()).append(",")
+                            .append(escapeCsv(c.getName())).append(",")
+                            .append(escapeCsv(c.getPhone())).append(",")
+                            .append(escapeCsv(c.getEmail())).append(",")
+                            .append(c.getCustomerType()).append(",")
+                            .append(c.getCreditLimit()).append(",")
+                            .append(c.getCurrentBalance()).append("\n");
+                }
+            }
+            case "assets" -> {
+                csv.append("ID,AssetCode,Name,Category,PurchaseDate,PurchaseCost,CurrentBookValue,Status,Location\n");
+                for (FixedAsset fa : fixedAssetRepository.findAll()) {
+                    csv.append(fa.getId()).append(",")
+                            .append(escapeCsv(fa.getAssetCode())).append(",")
+                            .append(escapeCsv(fa.getName())).append(",")
+                            .append(fa.getCategory()).append(",")
+                            .append(fa.getPurchaseDate()).append(",")
+                            .append(fa.getPurchaseCost()).append(",")
+                            .append(fa.getCurrentBookValue()).append(",")
+                            .append(fa.getStatus()).append(",")
+                            .append(escapeCsv(fa.getLocation())).append("\n");
                 }
             }
             default -> throw new BadRequestException("Unsupported export entity: " + entityName);
@@ -625,7 +741,13 @@ public class SettingsServiceImpl implements SettingsService {
         details.put("availableProcessors", rt.availableProcessors());
         details.put("totalUsersCount", userRepository.count());
         details.put("totalDrugsCount", drugRepository.count());
+        details.put("totalBatchesCount", drugBatchRepository.count());
         details.put("totalSalesCount", saleRepository.count());
+        details.put("totalExpensesCount", expenseRepository.count());
+        details.put("totalPurchasesCount", purchaseOrderRepository.count());
+        details.put("totalSuppliersCount", supplierRepository.count());
+        details.put("totalCustomersCount", customerRepository.count());
+        details.put("totalAssetsCount", fixedAssetRepository.count());
         info.setDetails(details);
 
         return info;
@@ -727,6 +849,10 @@ public class SettingsServiceImpl implements SettingsService {
         s.setExpiryAlertDays(30);
         s.setSessionTimeoutMinutes(15);
         s.setSessionWarningMinutes(2);
+        s.setAutoPrintReceipt(false);
+        s.setRequireShiftOpen(false);
+        s.setMaxDiscountPercent(10.0);
+        s.setDefaultPaymentMethod("CASH");
         return systemSettingsRepository.save(s);
     }
 

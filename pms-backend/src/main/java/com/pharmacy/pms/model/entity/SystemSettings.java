@@ -41,6 +41,18 @@ public class SystemSettings extends BaseEntity {
     @Column(name = "session_warning_minutes")
     private Integer sessionWarningMinutes = 2;
 
+    @Column(name = "auto_print_receipt")
+    private Boolean autoPrintReceipt = false;
+
+    @Column(name = "require_shift_open")
+    private Boolean requireShiftOpen = false;
+
+    @Column(name = "max_discount_percent")
+    private Double maxDiscountPercent = 10.0;
+
+    @Column(name = "default_payment_method", length = 30)
+    private String defaultPaymentMethod = "CASH";
+
     public SystemSettings() {}
 
     public String getCurrency() { return currency; }
@@ -75,4 +87,16 @@ public class SystemSettings extends BaseEntity {
 
     public Integer getSessionWarningMinutes() { return sessionWarningMinutes; }
     public void setSessionWarningMinutes(Integer sessionWarningMinutes) { this.sessionWarningMinutes = sessionWarningMinutes; }
+
+    public Boolean getAutoPrintReceipt() { return autoPrintReceipt; }
+    public void setAutoPrintReceipt(Boolean autoPrintReceipt) { this.autoPrintReceipt = autoPrintReceipt; }
+
+    public Boolean getRequireShiftOpen() { return requireShiftOpen; }
+    public void setRequireShiftOpen(Boolean requireShiftOpen) { this.requireShiftOpen = requireShiftOpen; }
+
+    public Double getMaxDiscountPercent() { return maxDiscountPercent; }
+    public void setMaxDiscountPercent(Double maxDiscountPercent) { this.maxDiscountPercent = maxDiscountPercent; }
+
+    public String getDefaultPaymentMethod() { return defaultPaymentMethod; }
+    public void setDefaultPaymentMethod(String defaultPaymentMethod) { this.defaultPaymentMethod = defaultPaymentMethod; }
 }
