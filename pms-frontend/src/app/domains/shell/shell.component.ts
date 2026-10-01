@@ -30,7 +30,7 @@ import { InactivityService } from '../../core/services/inactivity.service';
         <!-- Logo Header -->
         <div style="padding: 22px 20px; border-bottom: 1px solid #1e293b; display: flex; align-items: center; gap: 12px;">
           <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4); overflow: hidden;">
-            <img *ngIf="settingsService.profile()?.logoPath" [src]="settingsService.profile()?.logoPath" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" />
+            <img *ngIf="settingsService.profile()?.logoPath" [src]="settingsService.resolveLogoUrl(settingsService.profile()?.logoPath)" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" />
             <lucide-icon *ngIf="!settingsService.profile()?.logoPath" name="pill" [size]="22" color="#ffffff"></lucide-icon>
           </div>
           <div style="min-width: 0;">

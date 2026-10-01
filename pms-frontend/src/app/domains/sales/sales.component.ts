@@ -121,7 +121,7 @@ export interface SaleReturnItem {
                    class="form-control" style="padding-left: 36px;" placeholder="Search invoice #, customer name, or cashier..." />
           </div>
 
-          <select [(ngModel)]="paymentFilter" (change)="loadSales()" class="form-control" style="width: auto; min-width: 180px;">
+          <select [(ngModel)]="paymentFilter" (change)="loadSales()" aria-label="Filter sales by payment method" class="form-control" style="width: auto; min-width: 180px;">
             <option value="">All Payment Methods</option>
             <option value="CASH">Cash Till</option>
             <option value="MOBILE_MONEY">Telebirr / CBE Birr</option>

@@ -135,6 +135,7 @@ export interface SystemInfo {
 })
 export class SettingsService {
   private readonly baseUrl = `${environment.apiUrl}/settings`;
+  private readonly backendOrigin = environment.apiUrl.replace(/\/api\/v1.*$/, '');
 
   profile = signal<PharmacyProfile | null>(null);
   systemSettings = signal<SystemSettings | null>(null);
@@ -142,6 +143,17 @@ export class SettingsService {
   constructor(private http: HttpClient) {
     this.loadProfile();
     this.loadSystemSettings();
+  }
+
+  /**
+   * Resolves a logo path returned by the backend (e.g. "/api/v1/uploads/branding/logo.png")
+   * to a fully-qualified URL so the browser loads it from the correct backend host.
+   */
+  resolveLogoUrl(logoPath: string | null | undefined): string | null {
+    if (!logoPath) return null;
+    if (logoPath.startsWith('http://') || logoPath.startsWith('https://')) return logoPath;
+    const path = logoPath.startsWith('/') ? logoPath : '/' + logoPath;
+    return this.backendOrigin + path;
   }
 
   // 1. Profile

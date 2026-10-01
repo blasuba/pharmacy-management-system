@@ -27,21 +27,19 @@ export interface PeriodicTrendSlot {
     <div class="pharmly-reports-root">
 
       <!-- ========================================================================= -->
-      <!-- 1. TOP HEADER & FINANCIAL PERIOD SELECTOR BAR                             -->
+      <!-- 1. TOP HEADER & FINANCIAL PERIOD SELECTOR                                 -->
       <!-- ========================================================================= -->
       <div class="top-header-row">
         <div class="header-titles">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <div style="width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #0f766e, #0d9488); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(15,118,110,0.25);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="header-icon-box">
               <lucide-icon name="line-chart" [size]="22"></lucide-icon>
             </div>
             <div>
-              <h1 class="main-page-title">Financial Accounting & Stock Intelligence</h1>
-              <div class="breadcrumb-sub">
-                <span>Pharmacy Management</span>
-                <span class="crumb-sep">&gt;</span>
-                <span class="crumb-active">P&L, Expenses, Revenue & Stock Valuations</span>
-              </div>
+              <h1 class="main-page-title">Profit & Financial Analytics</h1>
+              <p class="header-subtitle">
+                Track your pharmacy's sales income, product costs, daily expenses, and take-home net profit.
+              </p>
             </div>
           </div>
         </div>
@@ -49,7 +47,7 @@ export interface PeriodicTrendSlot {
         <div class="header-controls">
           <!-- Quick Period Mode Pills -->
           <div class="date-pills-group">
-            <button (click)="selectPeriodMode('DAILY')" [class.active]="selectedPeriodMode === 'DAILY'" class="range-pill">Daily</button>
+            <button (click)="selectPeriodMode('DAILY')" [class.active]="selectedPeriodMode === 'DAILY'" class="range-pill">Today</button>
             <button (click)="selectPeriodMode('WEEKLY')" [class.active]="selectedPeriodMode === 'WEEKLY'" class="range-pill">7 Days</button>
             <button (click)="selectPeriodMode('MONTHLY')" [class.active]="selectedPeriodMode === 'MONTHLY'" class="range-pill">Monthly</button>
             <button (click)="selectPeriodMode('QUARTERLY')" [class.active]="selectedPeriodMode === 'QUARTERLY'" class="range-pill">Quarterly</button>
@@ -60,19 +58,18 @@ export interface PeriodicTrendSlot {
           <!-- Export PDF Button -->
           <button (click)="downloadPdf()" class="btn-pdf-export" title="Download Official Financial Statement PDF">
             <lucide-icon name="file-down" [size]="15"></lucide-icon>
-            <span>Audit PDF</span>
+            <span>Download PDF</span>
           </button>
         </div>
       </div>
 
       <!-- Secondary Period Navigator & Filter Toolbar -->
       <div class="date-filter-bar">
-        <!-- Monthly/Quarterly/Yearly specific selectors -->
         <div class="filter-left">
-          <lucide-icon name="calendar" [size]="16" color="#0f766e"></lucide-icon>
-          <span class="filter-label">Financial Period:</span>
+          <lucide-icon name="calendar" [size]="16" color="#059669"></lucide-icon>
+          <span class="filter-label">Selected Period:</span>
 
-          <!-- Year Selector (Applicable for Monthly, Quarterly, Yearly) -->
+          <!-- Year Selector -->
           <select [(ngModel)]="selectedYear" (change)="loadFinancialStatement()" class="form-control-sm" *ngIf="selectedPeriodMode !== 'DAILY' && selectedPeriodMode !== 'WEEKLY' && selectedPeriodMode !== 'CUSTOM'">
             <option *ngFor="let y of availableYears" [value]="y">{{ y }}</option>
           </select>
@@ -99,129 +96,138 @@ export interface PeriodicTrendSlot {
 
           <!-- Active Period Statement Badge -->
           <span class="active-period-badge">
-            {{ statement()?.periodLabel || 'Consolidated Statement' }}
+            {{ statement()?.periodLabel || 'Consolidated Overview' }}
           </span>
         </div>
 
         <div style="display: flex; gap: 8px;">
           <button (click)="loadFinancialStatement()" class="btn-recalculate" title="Recalculate live financial metrics">
             <lucide-icon name="refresh-cw" [size]="14"></lucide-icon>
-            <span>Recalculate</span>
+            <span>Refresh</span>
           </button>
         </div>
       </div>
 
       <!-- ========================================================================= -->
-      <!-- 2. TOP 6 EXECUTIVE FINANCIAL KPI CARDS                                    -->
+      <!-- 2. INTUITIVE VISUAL PROFIT FLOW BANNER (NON-TECH FRIENDLY)                -->
       <!-- ========================================================================= -->
-      <div class="top-cards-grid-6">
+      <div class="profit-equation-banner">
+        <div class="eq-step">
+          <span class="eq-label">1. Total Sales</span>
+          <span class="eq-val text-blue">ETB {{ (statement()?.totalRevenue || 0) | number:'1.2-2' }}</span>
+          <span class="eq-sub">{{ statement()?.totalSalesCount || 0 }} sales</span>
+        </div>
+
+        <div class="eq-operator">−</div>
+
+        <div class="eq-step">
+          <span class="eq-label">2. Product Buying Cost</span>
+          <span class="eq-val text-slate">ETB {{ (statement()?.totalCostOfGoodsSold || 0) | number:'1.2-2' }}</span>
+          <span class="eq-sub">{{ getCostPercent() }}% of sales</span>
+        </div>
+
+        <div class="eq-operator">=</div>
+
+        <div class="eq-step">
+          <span class="eq-label">3. Gross Margin</span>
+          <span class="eq-val text-teal">ETB {{ (statement()?.grossProfit || 0) | number:'1.2-2' }}</span>
+          <span class="eq-sub">{{ (statement()?.grossMarginPercentage || 0) | number:'1.1-1' }}% margin</span>
+        </div>
+
+        <div class="eq-operator">−</div>
+
+        <div class="eq-step">
+          <span class="eq-label">4. Running Expenses</span>
+          <span class="eq-val text-amber">ETB {{ (statement()?.totalOperatingExpenses || 0) | number:'1.2-2' }}</span>
+          <span class="eq-sub">{{ statement()?.expensesCount || 0 }} expenses</span>
+        </div>
+
+        <div class="eq-operator">➔</div>
+
+        <div class="eq-step eq-highlight-green">
+          <span class="eq-label eq-label-hero">5. Take-Home Net Profit</span>
+          <span class="eq-val eq-val-hero">ETB {{ (statement()?.netOperatingProfit || 0) | number:'1.2-2' }}</span>
+          <span class="eq-sub eq-sub-hero">{{ (statement()?.netProfitMarginPercentage || 0) | number:'1.1-1' }}% net profit margin</span>
+        </div>
+      </div>
+
+      <!-- ========================================================================= -->
+      <!-- 3. TOP 4 EXECUTIVE SUMMARY CARDS                                          -->
+      <!-- ========================================================================= -->
+      <div class="top-cards-grid-4">
         <!-- 1. Gross Sales Revenue -->
-        <div class="metric-card bg-card-blue">
+        <div class="summary-card card-blue">
           <div class="card-head-flex">
-            <div class="icon-circle-soft blue-soft">
+            <div class="icon-circle icon-blue">
               <lucide-icon name="dollar-sign" [size]="18" color="#0284c7"></lucide-icon>
             </div>
-            <span class="badge badge-primary">Operating Revenue</span>
+            <span class="status-pill pill-blue">Sales Income</span>
           </div>
-          <div class="card-content-block">
-            <span class="card-sublabel">Gross Sales Revenue</span>
+          <div class="card-body-block">
+            <span class="card-sublabel">Total Sales Revenue</span>
             <div class="card-big-value text-blue">
               ETB {{ (statement()?.totalRevenue || 0) | number:'1.2-2' }}
             </div>
-            <span class="card-footer-note">{{ statement()?.totalSalesCount || 0 }} completed invoices</span>
+            <span class="card-footer-note">{{ statement()?.totalSalesCount || 0 }} completed customer transactions</span>
           </div>
         </div>
 
-        <!-- 2. Cost of Goods Sold (COGS) -->
-        <div class="metric-card bg-card-rose">
+        <!-- 2. Cost of Goods (Neutral / Slate-Blue - NO RED) -->
+        <div class="summary-card card-slate">
           <div class="card-head-flex">
-            <div class="icon-circle-soft rose-soft">
-              <lucide-icon name="shopping-bag" [size]="18" color="#e11d48"></lucide-icon>
+            <div class="icon-circle icon-slate">
+              <lucide-icon name="shopping-bag" [size]="18" color="#475569"></lucide-icon>
             </div>
-            <span class="badge badge-rose">{{ getCostPercent() }}% Cost Ratio</span>
+            <span class="status-pill pill-slate">{{ getCostPercent() }}% Cost Ratio</span>
           </div>
-          <div class="card-content-block">
-            <span class="card-sublabel">Cost of Goods Sold (COGS)</span>
-            <div class="card-big-value text-rose">
+          <div class="card-body-block">
+            <span class="card-sublabel">Product Buying Cost (COGS)</span>
+            <div class="card-big-value text-slate">
               ETB {{ (statement()?.totalCostOfGoodsSold || 0) | number:'1.2-2' }}
             </div>
-            <span class="card-footer-note">Direct batch acquisition cost</span>
+            <span class="card-footer-note">Wholesale inventory purchase cost</span>
           </div>
         </div>
 
-        <!-- 3. Gross Operating Profit -->
-        <div class="metric-card bg-card-teal">
+        <!-- 3. Operating Expenses -->
+        <div class="summary-card card-amber">
           <div class="card-head-flex">
-            <div class="icon-circle-soft teal-soft">
-              <lucide-icon name="trending-up" [size]="18" color="#0f766e"></lucide-icon>
-            </div>
-            <span class="badge badge-teal">{{ (statement()?.grossMarginPercentage || 0) | number:'1.1-1' }}% Gross Margin</span>
-          </div>
-          <div class="card-content-block">
-            <span class="card-sublabel">Gross Profit</span>
-            <div class="card-big-value text-teal">
-              ETB {{ (statement()?.grossProfit || 0) | number:'1.2-2' }}
-            </div>
-            <span class="card-footer-note">Revenue minus direct COGS</span>
-          </div>
-        </div>
-
-        <!-- 4. Operating Expenses (OpEx) -->
-        <div class="metric-card bg-card-amber">
-          <div class="card-head-flex">
-            <div class="icon-circle-soft amber-soft">
+            <div class="icon-circle icon-amber">
               <lucide-icon name="receipt" [size]="18" color="#d97706"></lucide-icon>
             </div>
-            <span class="badge badge-amber">{{ statement()?.expensesCount || 0 }} Expenses</span>
+            <span class="status-pill pill-amber">{{ statement()?.expensesCount || 0 }} Entries</span>
           </div>
-          <div class="card-content-block">
+          <div class="card-body-block">
             <span class="card-sublabel">Operating Expenses (OpEx)</span>
             <div class="card-big-value text-amber">
               ETB {{ (statement()?.totalOperatingExpenses || 0) | number:'1.2-2' }}
             </div>
-            <span class="card-footer-note">Rent, salaries, utilities & overheads</span>
+            <span class="card-footer-note">Store rent, salaries, utilities & overheads</span>
           </div>
         </div>
 
-        <!-- 5. Procurement Outflows (Purchases) -->
-        <div class="metric-card bg-card-purple">
+        <!-- 4. Hero Net Profit (Comforting Emerald Green) -->
+        <div class="summary-card hero-emerald-card">
           <div class="card-head-flex">
-            <div class="icon-circle-soft purple-soft">
-              <lucide-icon name="truck" [size]="18" color="#7c3aed"></lucide-icon>
+            <div class="icon-circle icon-emerald-glow">
+              <lucide-icon name="award" [size]="20" color="#ffffff"></lucide-icon>
             </div>
-            <span class="badge badge-purple">{{ statement()?.purchasesCount || 0 }} Restock POs</span>
+            <span class="status-pill pill-emerald-bright">
+              {{ (statement()?.netProfitMarginPercentage || 0) | number:'1.1-1' }}% Margin
+            </span>
           </div>
-          <div class="card-content-block">
-            <span class="card-sublabel">Inventory Restocking</span>
-            <div class="card-big-value text-purple">
-              ETB {{ (statement()?.totalPurchases || 0) | number:'1.2-2' }}
-            </div>
-            <span class="card-footer-note">GRN Received: ETB {{ (statement()?.totalReceivedPurchases || 0) | number:'1.0-0' }}</span>
-          </div>
-        </div>
-
-        <!-- 6. Hero Net Operating Profit (Bottom Line) -->
-        <div class="hero-emerald-card" [class.hero-loss]="(statement()?.netOperatingProfit || 0) < 0">
-          <div class="card-head-flex">
-            <div class="lime-icon-circle">
-              <lucide-icon [name]="(statement()?.netOperatingProfit || 0) >= 0 ? 'award' : 'alert-triangle'" [size]="20"></lucide-icon>
-            </div>
-            <div class="trend-pill-lime">
-              <span>{{ (statement()?.netProfitMarginPercentage || 0) | number:'1.1-1' }}% Net Margin</span>
-            </div>
-          </div>
-          <div class="card-content-block">
-            <span class="hero-card-sublabel">Net Operating Bottom Line</span>
+          <div class="card-body-block">
+            <span class="hero-card-sublabel">Net Operating Profit</span>
             <div class="hero-card-big-value">
               ETB {{ (statement()?.netOperatingProfit || 0) | number:'1.2-2' }}
             </div>
-            <span class="hero-card-footer-note">Gross Profit minus Operating Overheads</span>
+            <span class="hero-card-footer-note">Final take-home profit after all costs</span>
           </div>
         </div>
       </div>
 
       <!-- ========================================================================= -->
-      <!-- 3. VISUAL CHARTS & DISTRIBUTION BREAKDOWN                                 -->
+      <!-- 4. CHARTS & REVENUE DISTRIBUTION BREAKDOWN                                -->
       <!-- ========================================================================= -->
       <div class="middle-analytics-grid">
         
@@ -229,14 +235,14 @@ export interface PeriodicTrendSlot {
         <div class="analytics-chart-panel">
           <div class="panel-header-row">
             <div>
-              <h3 class="panel-title-text">Financial Velocity: Revenue vs Expenses vs Net Profit</h3>
+              <h3 class="panel-title-text">Income vs Expenses vs Net Profit</h3>
               <p class="panel-subtitle-text">
-                {{ selectedPeriodMode }} trajectory showing daily/monthly cash generation and bottom-line margin
+                {{ selectedPeriodMode }} trend showing money in, costs, and profit over time
               </p>
             </div>
             <div class="chart-legend-row">
-              <span class="legend-chip"><span class="legend-box bg-blue"></span> Revenue</span>
-              <span class="legend-chip"><span class="legend-box bg-amber"></span> OpEx</span>
+              <span class="legend-chip"><span class="legend-box bg-blue"></span> Sales</span>
+              <span class="legend-chip"><span class="legend-box bg-amber"></span> Expenses</span>
               <span class="legend-chip"><span class="legend-box bg-emerald"></span> Net Profit</span>
             </div>
           </div>
@@ -253,22 +259,22 @@ export interface PeriodicTrendSlot {
                 <!-- Floating Tooltip -->
                 <div *ngIf="hoveredSlotIndex === idx" class="capsule-tooltip-bubble">
                   <div class="tip-title">{{ slot.periodName }}</div>
-                  <div class="tip-line"><span style="color: #38bdf8;">Revenue:</span> ETB {{ slot.revenue | number:'1.0-0' }}</div>
-                  <div class="tip-line"><span style="color: #f43f5e;">COGS:</span> ETB {{ slot.cogs | number:'1.0-0' }}</div>
+                  <div class="tip-line"><span style="color: #60a5fa;">Sales:</span> ETB {{ slot.revenue | number:'1.0-0' }}</div>
+                  <div class="tip-line"><span style="color: #94a3b8;">Cost:</span> ETB {{ slot.cogs | number:'1.0-0' }}</div>
                   <div class="tip-line"><span style="color: #fbbf24;">Expenses:</span> ETB {{ slot.expenses | number:'1.0-0' }}</div>
-                  <div class="tip-line" style="font-weight: 800; border-top: 1px solid #334155; margin-top: 2px; padding-top: 2px;">
-                    <span [style.color]="slot.netProfit >= 0 ? '#4ade80' : '#f87171'">Net:</span> ETB {{ slot.netProfit | number:'1.0-0' }}
+                  <div class="tip-line" style="font-weight: 800; border-top: 1px solid #334155; margin-top: 3px; padding-top: 3px;">
+                    <span style="color: #4ade80;">Net Profit:</span> ETB {{ slot.netProfit | number:'1.0-0' }}
                   </div>
                 </div>
 
                 <!-- Multi-bar group -->
                 <div class="multi-bars-group">
                   <!-- Revenue Bar -->
-                  <div class="bar-pill bar-blue" [style.height.%]="getBarHeightPct(slot.revenue)" title="Revenue: ETB {{ slot.revenue }}"></div>
+                  <div class="bar-pill bar-blue" [style.height.%]="getBarHeightPct(slot.revenue)" title="Sales: ETB {{ slot.revenue }}"></div>
                   <!-- Expense Bar -->
                   <div class="bar-pill bar-amber" [style.height.%]="getBarHeightPct(slot.expenses)" title="Expenses: ETB {{ slot.expenses }}"></div>
-                  <!-- Net Profit Bar -->
-                  <div class="bar-pill" [class.bar-emerald]="slot.netProfit >= 0" [class.bar-red]="slot.netProfit < 0" [style.height.%]="getBarHeightPct(slot.netProfit)" title="Net Profit: ETB {{ slot.netProfit }}"></div>
+                  <!-- Net Profit Bar (Clean Emerald) -->
+                  <div class="bar-pill bar-emerald" [style.height.%]="getBarHeightPct(slot.netProfit)" title="Net Profit: ETB {{ slot.netProfit }}"></div>
                 </div>
 
                 <span class="bar-day-label" [class.label-active]="hoveredSlotIndex === idx">{{ slot.periodName }}</span>
@@ -276,8 +282,8 @@ export interface PeriodicTrendSlot {
             </div>
           </div>
 
-          <div *ngIf="trendSeries.length === 0" style="padding: 40px; text-align: center; color: #94a3b8;">
-            No transactions recorded for the selected audit window.
+          <div *ngIf="trendSeries.length === 0" style="padding: 36px; text-align: center; color: #94a3b8; font-size: 13px;">
+            No transactions recorded for the selected time window.
           </div>
         </div>
 
@@ -285,15 +291,15 @@ export interface PeriodicTrendSlot {
         <div class="donut-chart-panel">
           <div class="panel-header-row">
             <div>
-              <h3 class="panel-title-text">P&L Revenue Allocation</h3>
-              <p class="panel-subtitle-text">How incoming revenue is distributed</p>
+              <h3 class="panel-title-text">Where Your Sales Money Goes</h3>
+              <p class="panel-subtitle-text">Percentage share of total income</p>
             </div>
-            <span class="badge badge-success">{{ (statement()?.netProfitMarginPercentage || 0) | number:'1.1-1' }}% Net</span>
+            <span class="status-pill pill-emerald-bright">{{ (statement()?.netProfitMarginPercentage || 0) | number:'1.1-1' }}% Net</span>
           </div>
 
           <div class="donut-visual-container">
             <div class="donut-svg-wrapper">
-              <svg width="150" height="150" viewBox="0 0 42 42" class="donut-svg">
+              <svg width="140" height="140" viewBox="0 0 42 42" class="donut-svg">
                 <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#f1f5f9" stroke-width="6.5"></circle>
                 <!-- Net Profit Ring Segment (Emerald) -->
                 <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#10b981" stroke-width="6.5"
@@ -303,13 +309,13 @@ export interface PeriodicTrendSlot {
                 <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#f59e0b" stroke-width="6.5"
                         stroke-linecap="round"
                         [attr.stroke-dasharray]="getOpExDonutArray()" [attr.stroke-dashoffset]="getNetProfitDonutOffset()"></circle>
-                <!-- COGS Ring Segment (Rose) -->
-                <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#e11d48" stroke-width="6.5"
+                <!-- Product Cost Ring Segment (Slate / Indigo - No Red) -->
+                <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#64748b" stroke-width="6.5"
                         stroke-linecap="round"
                         [attr.stroke-dasharray]="getCostDonutArray()" [attr.stroke-dashoffset]="getCostDonutOffsetCalculated()"></circle>
               </svg>
               <div class="donut-center-info">
-                <span class="center-pct">{{ (statement()?.netProfitMarginPercentage || 0) | number:'1.0-0' }}%</span>
+                <span class="center-pct text-emerald">{{ (statement()?.netProfitMarginPercentage || 0) | number:'1.0-0' }}%</span>
                 <span class="center-sub">Net Profit</span>
               </div>
             </div>
@@ -319,16 +325,16 @@ export interface PeriodicTrendSlot {
               <div class="legend-item-card">
                 <div class="legend-badge-row">
                   <span class="legend-dot dot-emerald"></span>
-                  <span class="legend-name">Net Retained Profit</span>
+                  <span class="legend-name">Take-Home Profit</span>
                   <span class="legend-pct text-emerald">{{ (statement()?.netProfitMarginPercentage || 0) | number:'1.1-1' }}%</span>
                 </div>
-                <div class="legend-val">ETB {{ (statement()?.netOperatingProfit || 0) | number:'1.2-2' }}</div>
+                <div class="legend-val text-emerald">ETB {{ (statement()?.netOperatingProfit || 0) | number:'1.2-2' }}</div>
               </div>
 
               <div class="legend-item-card">
                 <div class="legend-badge-row">
                   <span class="legend-dot dot-amber"></span>
-                  <span class="legend-name">Operating Expenses (OpEx)</span>
+                  <span class="legend-name">Operating Expenses</span>
                   <span class="legend-pct text-amber">{{ getOpExPercent() }}%</span>
                 </div>
                 <div class="legend-val">ETB {{ (statement()?.totalOperatingExpenses || 0) | number:'1.2-2' }}</div>
@@ -336,9 +342,9 @@ export interface PeriodicTrendSlot {
 
               <div class="legend-item-card">
                 <div class="legend-badge-row">
-                  <span class="legend-dot dot-rose"></span>
-                  <span class="legend-name">Cost of Goods (COGS)</span>
-                  <span class="legend-pct text-rose">{{ getCostPercent() }}%</span>
+                  <span class="legend-dot dot-slate"></span>
+                  <span class="legend-name">Product Buying Cost</span>
+                  <span class="legend-pct text-slate">{{ getCostPercent() }}%</span>
                 </div>
                 <div class="legend-val">ETB {{ (statement()?.totalCostOfGoodsSold || 0) | number:'1.2-2' }}</div>
               </div>
@@ -349,7 +355,7 @@ export interface PeriodicTrendSlot {
       </div>
 
       <!-- ========================================================================= -->
-      <!-- 4. NAVIGATION TABS FOR DETAILED STATEMENTS & EXPENSES                      -->
+      <!-- 5. TABS FOR DETAILED BREAKDOWNS                                           -->
       <!-- ========================================================================= -->
       <div class="financial-statement-panel">
         <div class="statement-header-row">
@@ -361,108 +367,108 @@ export interface PeriodicTrendSlot {
 
             <button (click)="activeTab = 'EXPENSES'" [class.active]="activeTab === 'EXPENSES'" class="tab-btn">
               <lucide-icon name="receipt" [size]="14"></lucide-icon>
-              <span>Operating Expenses Allocation ({{ statement()?.expensesCount || 0 }})</span>
+              <span>Expenses Breakdown ({{ statement()?.expensesCount || 0 }})</span>
             </button>
 
             <button (click)="activeTab = 'VALUATION'" [class.active]="activeTab === 'VALUATION'" class="tab-btn">
               <lucide-icon name="boxes" [size]="14"></lucide-icon>
-              <span>Stock Valuation & Asset Worth</span>
+              <span>Stock Value on Shelf</span>
             </button>
 
             <button (click)="activeTab = 'TENDER'" [class.active]="activeTab === 'TENDER'" class="tab-btn">
               <lucide-icon name="credit-card" [size]="14"></lucide-icon>
-              <span>Payment Channels Audit</span>
+              <span>Payment Methods</span>
             </button>
           </div>
 
           <div style="display: flex; gap: 8px;">
             <button (click)="downloadPdf()" class="btn-export-statement">
               <lucide-icon name="printer" [size]="14"></lucide-icon>
-              <span>Print Official Audit</span>
+              <span>Print Financial Report</span>
             </button>
           </div>
         </div>
 
-        <!-- TAB 1: P&L EXECUTIVE STATEMENT TABLE -->
+        <!-- TAB 1: P&L SUMMARY TABLE -->
         <div *ngIf="activeTab === 'PL'" class="table-scroll-wrapper">
           <table class="statement-table">
             <thead>
               <tr>
-                <th>Accounting Ledger Item</th>
-                <th>Classification</th>
-                <th>Calculation Basis / Notes</th>
+                <th>Summary Line</th>
+                <th>Type</th>
+                <th>Description</th>
                 <th style="text-align: right;">Amount (ETB)</th>
-                <th style="text-align: right;">% Gross Revenue</th>
+                <th style="text-align: right;">% of Sales</th>
               </tr>
             </thead>
             <tbody>
               <!-- 1. Revenue -->
               <tr>
-                <td class="td-strong">1. Gross Sales Revenue</td>
-                <td><span class="badge badge-primary">Operating Income</span></td>
-                <td>Completed POS sales transactions</td>
-                <td class="td-amount td-emerald">ETB {{ (statement()?.totalRevenue || 0) | number:'1.2-2' }}</td>
+                <td class="td-strong">1. Total Sales Revenue</td>
+                <td><span class="status-pill pill-blue">Sales Income</span></td>
+                <td>Money collected from all completed customer purchases</td>
+                <td class="td-amount text-blue">ETB {{ (statement()?.totalRevenue || 0) | number:'1.2-2' }}</td>
                 <td class="td-amount">100.0%</td>
               </tr>
 
               <!-- 2. COGS -->
               <tr>
-                <td class="td-strong">2. Cost of Goods Sold (COGS)</td>
-                <td><span class="badge badge-rose">Direct Cost</span></td>
-                <td>Batch wholesale purchase price (FEFO intake)</td>
-                <td class="td-amount td-rose">- ETB {{ (statement()?.totalCostOfGoodsSold || 0) | number:'1.2-2' }}</td>
-                <td class="td-amount td-rose">{{ getCostPercent() }}%</td>
+                <td class="td-strong">2. Product Wholesale Cost (COGS)</td>
+                <td><span class="status-pill pill-slate">Product Cost</span></td>
+                <td>Purchase price of the drugs sold to customers</td>
+                <td class="td-amount text-slate">- ETB {{ (statement()?.totalCostOfGoodsSold || 0) | number:'1.2-2' }}</td>
+                <td class="td-amount text-slate">{{ getCostPercent() }}%</td>
               </tr>
 
-              <!-- 3. Gross Margin -->
+              <!-- 3. Gross Profit -->
               <tr class="row-subtotal">
-                <td class="td-bold-large">3. Gross Operating Profit</td>
-                <td><span class="badge badge-teal">Gross Margin</span></td>
-                <td>Gross Revenue minus Direct COGS</td>
-                <td class="td-amount td-bold-large td-teal">ETB {{ (statement()?.grossProfit || 0) | number:'1.2-2' }}</td>
-                <td class="td-amount td-bold-large td-teal">{{ (statement()?.grossMarginPercentage || 0) | number:'1.1-2' }}%</td>
+                <td class="td-bold-large">3. Gross Profit (Trading Margin)</td>
+                <td><span class="status-pill pill-teal">Gross Profit</span></td>
+                <td>Sales revenue minus the direct wholesale product costs</td>
+                <td class="td-amount td-bold-large text-teal">ETB {{ (statement()?.grossProfit || 0) | number:'1.2-2' }}</td>
+                <td class="td-amount td-bold-large text-teal">{{ (statement()?.grossMarginPercentage || 0) | number:'1.1-2' }}%</td>
               </tr>
 
               <!-- 4. Operating Expenses Line -->
               <tr>
-                <td class="td-strong">4. Total Operating Expenses (OpEx)</td>
-                <td><span class="badge badge-amber">Overhead Outflow</span></td>
-                <td>Rent, payroll, utilities, transport, licenses</td>
-                <td class="td-amount td-amber">- ETB {{ (statement()?.totalOperatingExpenses || 0) | number:'1.2-2' }}</td>
-                <td class="td-amount td-amber">{{ getOpExPercent() }}%</td>
+                <td class="td-strong">4. Operating Running Expenses (OpEx)</td>
+                <td><span class="status-pill pill-amber">Daily Overheads</span></td>
+                <td>Pharmacy rent, staff salaries, electricity, water, licenses</td>
+                <td class="td-amount text-amber">- ETB {{ (statement()?.totalOperatingExpenses || 0) | number:'1.2-2' }}</td>
+                <td class="td-amount text-amber">{{ getOpExPercent() }}%</td>
               </tr>
 
-              <!-- 5. Expired Stock Losses -->
+              <!-- 5. Expired Stock Losses if any -->
               <tr *ngIf="(statement()?.expiredStockLoss || 0) > 0">
-                <td class="td-strong">5. Expired / Disposed Stock Loss</td>
-                <td><span class="badge badge-rose">Inventory Loss</span></td>
-                <td>Cost valuation of expired and written-off batches</td>
-                <td class="td-amount td-rose">- ETB {{ (statement()?.expiredStockLoss || 0) | number:'1.2-2' }}</td>
-                <td class="td-amount td-rose">{{ getLossPercent() }}%</td>
+                <td class="td-strong">5. Expired / Disposed Stock</td>
+                <td><span class="status-pill pill-slate">Inventory Loss</span></td>
+                <td>Cost value of expired batches removed from shelf</td>
+                <td class="td-amount text-slate">- ETB {{ (statement()?.expiredStockLoss || 0) | number:'1.2-2' }}</td>
+                <td class="td-amount text-slate">{{ getLossPercent() }}%</td>
               </tr>
 
               <!-- 6. NET OPERATING PROFIT -->
-              <tr class="row-grand-total" [class.row-loss]="(statement()?.netOperatingProfit || 0) < 0">
-                <td class="td-hero-bold">NET OPERATING PROFIT (BOTTOM LINE)</td>
+              <tr class="row-grand-total">
+                <td class="td-hero-bold">NET TAKE-HOME PROFIT (BOTTOM LINE)</td>
                 <td>
-                  <span [class]="(statement()?.netOperatingProfit || 0) >= 0 ? 'badge badge-success' : 'badge badge-rose'">
-                    {{ (statement()?.netOperatingProfit || 0) >= 0 ? 'Net Surplus' : 'Operating Deficit' }}
+                  <span class="status-pill pill-emerald-bright">
+                    Net Surplus
                   </span>
                 </td>
-                <td>Gross Profit minus All Operating Overheads</td>
-                <td class="td-amount td-hero-bold" [style.color]="(statement()?.netOperatingProfit || 0) >= 0 ? '#059669' : '#dc2626'">
+                <td>Final profit after paying for products and all pharmacy expenses</td>
+                <td class="td-amount td-hero-bold text-emerald">
                   ETB {{ (statement()?.netOperatingProfit || 0) | number:'1.2-2' }}
                 </td>
-                <td class="td-amount td-hero-bold" [style.color]="(statement()?.netOperatingProfit || 0) >= 0 ? '#059669' : '#dc2626'">
+                <td class="td-amount td-hero-bold text-emerald">
                   {{ (statement()?.netProfitMarginPercentage || 0) | number:'1.1-2' }}%
                 </td>
               </tr>
 
               <!-- Restocking Memo Line -->
               <tr style="background: #f8fafc; font-size: 12px; color: #64748b;">
-                <td><em>Memo: Period Procurement Purchases</em></td>
-                <td><span class="badge badge-purple">Inventory Capex</span></td>
-                <td>Restock Purchase Orders issued to suppliers</td>
+                <td><em>Memo: Restock Purchases Made in Period</em></td>
+                <td><span class="status-pill pill-purple">Restock Orders</span></td>
+                <td>Total restock orders placed with pharmaceutical distributors</td>
                 <td class="td-amount">ETB {{ (statement()?.totalPurchases || 0) | number:'1.2-2' }}</td>
                 <td class="td-amount">—</td>
               </tr>
@@ -470,22 +476,22 @@ export interface PeriodicTrendSlot {
           </table>
         </div>
 
-        <!-- TAB 2: OPERATING EXPENSES COST ALLOCATION & BREAKDOWN -->
+        <!-- TAB 2: OPERATING EXPENSES BREAKDOWN -->
         <div *ngIf="activeTab === 'EXPENSES'" style="display: flex; flex-direction: column; gap: 16px;">
           <!-- Banner link to dedicated Expenses page -->
-          <div class="card" style="padding: 14px 18px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div class="card" style="padding: 14px 18px; background: #f0fdf4; border: 1px solid #bbf7d0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-radius: 12px;">
             <div style="display: flex; align-items: center; gap: 12px;">
-              <div style="width: 38px; height: 38px; border-radius: 10px; background: #0284c7; color: #fff; display: flex; align-items: center; justify-content: center;">
+              <div style="width: 38px; height: 38px; border-radius: 10px; background: #059669; color: #fff; display: flex; align-items: center; justify-content: center;">
                 <lucide-icon name="wallet" [size]="20"></lucide-icon>
               </div>
               <div>
-                <h4 style="font-size: 14px; font-weight: 800; color: #0369a1; margin: 0;">Detailed Expense Records & Receipt Vouchers</h4>
-                <p style="font-size: 12px; color: #0284c7; margin: 2px 0 0;">
-                  Manage daily entries, search voucher numbers, attach payment proofs, and edit logs in the dedicated register.
+                <h4 style="font-size: 14px; font-weight: 800; color: #065f46; margin: 0;">Detailed Expense Records & Receipts</h4>
+                <p style="font-size: 12px; color: #059669; margin: 2px 0 0;">
+                  Record new receipts, attach payment proofs, search payee names, and view full expense audit logs.
                 </p>
               </div>
             </div>
-            <a routerLink="/expenses" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; text-decoration: none;">
+            <a routerLink="/expenses" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; text-decoration: none; background: #059669; border-color: #059669;">
               <span>Open Expenses Register</span>
               <lucide-icon name="arrow-right" [size]="14"></lucide-icon>
             </a>
@@ -493,33 +499,33 @@ export interface PeriodicTrendSlot {
 
           <!-- Category Quick Summary Cards -->
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-            <div *ngFor="let cat of expenseCategoriesSummary" class="card" style="padding: 12px 14px; border-left: 4px solid #0284c7;">
+            <div *ngFor="let cat of expenseCategoriesSummary" class="card" style="padding: 14px; border-left: 4px solid #059669; border-radius: 10px;">
               <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">{{ formatCategoryName(cat.key) }}</div>
               <div style="font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 4px; font-family: 'JetBrains Mono', monospace;">
                 ETB {{ cat.amount | number:'1.2-2' }}
               </div>
-              <div style="font-size: 11px; color: #0284c7; margin-top: 2px; font-weight: 600;">
-                {{ getCategoryOpExShare(cat.amount) }}% of Total OpEx
+              <div style="font-size: 11px; color: #059669; margin-top: 3px; font-weight: 600;">
+                {{ getCategoryOpExShare(cat.amount) }}% of Total Expenses
               </div>
             </div>
           </div>
 
           <!-- Expense Allocation Statement Table -->
-          <div class="table-scroll-wrapper card" style="padding: 0; overflow: hidden;">
+          <div class="table-scroll-wrapper card" style="padding: 0; overflow: hidden; border-radius: 12px;">
             <table class="statement-table">
               <thead>
                 <tr>
                   <th>Expense Category</th>
                   <th>Overhead Classification</th>
-                  <th style="text-align: right;">Period Expenditure (ETB)</th>
-                  <th style="text-align: right;">% of Total OpEx</th>
-                  <th style="text-align: right;">% of Gross Revenue</th>
+                  <th style="text-align: right;">Amount (ETB)</th>
+                  <th style="text-align: right;">% of Total Expenses</th>
+                  <th style="text-align: right;">% of Sales Income</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let cat of expenseCategoriesSummary">
                   <td class="td-strong">
-                    <span class="badge badge-amber" style="margin-right: 8px;">●</span>
+                    <span style="color: #059669; margin-right: 6px;">●</span>
                     {{ formatCategoryName(cat.key) }}
                   </td>
                   <td>{{ getCategoryClassification(cat.key) }}</td>
@@ -534,17 +540,17 @@ export interface PeriodicTrendSlot {
                   </td>
                 </tr>
                 <tr class="row-subtotal">
-                  <td class="td-bold-large">Total Period Operating Expenses (OpEx)</td>
+                  <td class="td-bold-large">Total Period Operating Expenses</td>
                   <td>Consolidated Operating Overheads</td>
-                  <td class="td-amount td-bold-large td-amber">
+                  <td class="td-amount td-bold-large text-amber">
                     ETB {{ (statement()?.totalOperatingExpenses || 0) | number:'1.2-2' }}
                   </td>
                   <td class="td-amount td-bold-large">100.0%</td>
                   <td class="td-amount td-bold-large">{{ getOpExPercent() }}%</td>
                 </tr>
                 <tr *ngIf="expenseCategoriesSummary.length === 0">
-                  <td colspan="5" style="text-align: center; padding: 36px; color: #94a3b8;">
-                    No operational overheads recorded for this financial cycle.
+                  <td colspan="5" style="text-align: center; padding: 36px; color: #94a3b8; font-size: 13px;">
+                    No operational expenses recorded for this period.
                   </td>
                 </tr>
               </tbody>
@@ -557,36 +563,36 @@ export interface PeriodicTrendSlot {
           <table class="statement-table">
             <thead>
               <tr>
-                <th>Stock Valuation Metric</th>
-                <th>Asset Valuation Basis</th>
-                <th>Units / Batches</th>
+                <th>Stock Valuation Item</th>
+                <th>Description</th>
+                <th>Quantity</th>
                 <th style="text-align: right;">Valuation (ETB)</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td class="td-strong">Wholesale Buying Value (Cost)</td>
-                <td>Procurement purchase valuation for current on-hand batches</td>
+                <td>Total money invested in the current medicine stock on shelf</td>
                 <td>{{ valuation()?.totalUnitsInStock || 0 }} total units</td>
                 <td class="td-amount">ETB {{ (valuation()?.totalCostValuation || 0) | number:'1.2-2' }}</td>
               </tr>
               <tr>
                 <td class="td-strong">Projected Retail Selling Value</td>
-                <td>Counter retail list pricing across active stock</td>
+                <td>Total expected sales revenue when all current shelf stock is sold</td>
                 <td>{{ valuation()?.activeBatchesCount || 0 }} active batches</td>
-                <td class="td-amount td-emerald">ETB {{ (valuation()?.totalRetailValuation || 0) | number:'1.2-2' }}</td>
+                <td class="td-amount text-emerald">ETB {{ (valuation()?.totalRetailValuation || 0) | number:'1.2-2' }}</td>
               </tr>
               <tr class="row-subtotal">
                 <td class="td-bold-large">Potential Future Gross Margin</td>
-                <td>Retail Potential minus Wholesale Cost</td>
-                <td>Inventory assets on shelf</td>
-                <td class="td-amount td-bold-large td-teal">ETB {{ (valuation()?.potentialGrossProfit || 0) | number:'1.2-2' }}</td>
+                <td>Expected profit once current shelf inventory is sold</td>
+                <td>Active inventory margin</td>
+                <td class="td-amount td-bold-large text-teal">ETB {{ (valuation()?.potentialGrossProfit || 0) | number:'1.2-2' }}</td>
               </tr>
-              <tr style="background: #fef2f2;">
-                <td class="td-strong" style="color: #dc2626;">Expired Batch Stock Write-off Loss</td>
-                <td>Batches past FEFO expiry date</td>
+              <tr *ngIf="(expiry()?.expiredLossValuation || 0) > 0" style="background: #f8fafc;">
+                <td class="td-strong" style="color: #64748b;">Expired Batch Stock Value</td>
+                <td>Batches past their FEFO expiry date</td>
                 <td>{{ expiry()?.expiredCount || 0 }} expired batches</td>
-                <td class="td-amount td-rose">- ETB {{ (expiry()?.expiredLossValuation || 0) | number:'1.2-2' }}</td>
+                <td class="td-amount text-slate">- ETB {{ (expiry()?.expiredLossValuation || 0) | number:'1.2-2' }}</td>
               </tr>
             </tbody>
           </table>
@@ -599,30 +605,30 @@ export interface PeriodicTrendSlot {
               <tr>
                 <th>Payment Channel</th>
                 <th>Settlement Method</th>
-                <th>Audit Status</th>
+                <th>Status</th>
                 <th style="text-align: right;">Collected Amount (ETB)</th>
-                <th style="text-align: right;">Channel Share</th>
+                <th style="text-align: right;">Share of Sales</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td class="td-strong">Physical Cash Drawer</td>
                 <td>Cash Tender</td>
-                <td><span class="badge badge-success">Reconciled</span></td>
+                <td><span class="status-pill pill-emerald-bright">Reconciled</span></td>
                 <td class="td-amount">ETB {{ (cashierShift()?.cashAmount || 0) | number:'1.2-2' }}</td>
                 <td class="td-amount">{{ getCashPercent() }}%</td>
               </tr>
               <tr>
                 <td class="td-strong">Telebirr / Digital Wallet</td>
-                <td>Electronic Pay</td>
-                <td><span class="badge badge-primary">Direct Settlement</span></td>
+                <td>Electronic Mobile Pay</td>
+                <td><span class="status-pill pill-blue">Direct Settlement</span></td>
                 <td class="td-amount">ETB {{ (cashierShift()?.digitalAmount || 0) | number:'1.2-2' }}</td>
                 <td class="td-amount">{{ getDigitalPercent() }}%</td>
               </tr>
               <tr>
                 <td class="td-strong">POS Card / Bank Transfer</td>
                 <td>Card & Bank Clearing</td>
-                <td><span class="badge badge-primary">Settled</span></td>
+                <td><span class="status-pill pill-blue">Settled</span></td>
                 <td class="td-amount">ETB {{ (cashierShift()?.cardOrBankAmount || 0) | number:'1.2-2' }}</td>
                 <td class="td-amount">{{ getCardPercent() }}%</td>
               </tr>
@@ -649,6 +655,17 @@ export interface PeriodicTrendSlot {
       flex-wrap: wrap;
       gap: 14px;
     }
+    .header-icon-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #059669, #0d9488);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(5,150,105,0.25);
+    }
     .main-page-title {
       font-size: 22px;
       font-weight: 800;
@@ -656,16 +673,11 @@ export interface PeriodicTrendSlot {
       margin: 0;
       letter-spacing: -0.02em;
     }
-    .breadcrumb-sub {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12.5px;
+    .header-subtitle {
+      font-size: 13px;
       color: #64748b;
-      margin-top: 2px;
+      margin: 2px 0 0;
     }
-    .crumb-sep { color: #cbd5e1; }
-    .crumb-active { color: #0f766e; font-weight: 600; }
 
     .header-controls {
       display: flex;
@@ -693,7 +705,7 @@ export interface PeriodicTrendSlot {
     }
     .range-pill.active {
       background: #ffffff;
-      color: #0f766e;
+      color: #059669;
       box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
 
@@ -703,13 +715,17 @@ export interface PeriodicTrendSlot {
       gap: 6px;
       padding: 7px 14px;
       border-radius: 8px;
-      background: #0f766e;
+      background: #059669;
       color: #ffffff;
       font-size: 12.5px;
       font-weight: 700;
       border: none;
       cursor: pointer;
-      box-shadow: 0 2px 6px rgba(15,118,110,0.25);
+      box-shadow: 0 2px 6px rgba(5,150,105,0.25);
+      transition: all 0.2s ease;
+    }
+    .btn-pdf-export:hover {
+      background: #047857;
     }
 
     /* Date Filter Toolbar */
@@ -723,6 +739,7 @@ export interface PeriodicTrendSlot {
       padding: 10px 16px;
       flex-wrap: wrap;
       gap: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     }
     .filter-left {
       display: flex;
@@ -762,8 +779,9 @@ export interface PeriodicTrendSlot {
     .active-period-badge {
       font-size: 11.5px;
       font-weight: 700;
-      color: #0f766e;
-      background: #ccfbf1;
+      color: #059669;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
       padding: 4px 10px;
       border-radius: 6px;
       margin-left: 6px;
@@ -780,56 +798,133 @@ export interface PeriodicTrendSlot {
       font-weight: 700;
       color: #475569;
       cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-recalculate:hover {
+      background: #f1f5f9;
+      color: #0f172a;
     }
 
-    /* 6 Top Cards Grid */
-    .top-cards-grid-6 {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 14px;
-    }
-    .metric-card {
-      background: #ffffff;
-      border: 1px solid #eef2f6;
-      border-radius: 14px;
-      padding: 16px;
+    /* Intuitive Profit Equation Banner */
+    .profit-equation-banner {
       display: flex;
-      flex-direction: column;
+      align-items: center;
       justify-content: space-between;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 14px 20px;
       gap: 10px;
+      flex-wrap: wrap;
       box-shadow: 0 1px 4px rgba(0,0,0,0.02);
     }
-    .card-head-flex {
+    .eq-step {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      gap: 2px;
     }
-    .icon-circle-soft {
-      width: 34px;
-      height: 34px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .blue-soft { background: #e0f2fe; }
-    .rose-soft { background: #ffe4e6; }
-    .teal-soft { background: #ccfbf1; }
-    .amber-soft { background: #fef3c7; }
-    .purple-soft { background: #ede9fe; }
-
-    .card-sublabel {
+    .eq-label {
       font-size: 11px;
       font-weight: 700;
       color: #64748b;
       text-transform: uppercase;
       letter-spacing: 0.03em;
     }
-    .card-big-value {
-      font-size: 20px;
+    .eq-val {
+      font-size: 16px;
       font-weight: 800;
       font-family: 'JetBrains Mono', monospace;
-      margin: 4px 0 2px;
+    }
+    .eq-sub {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .eq-operator {
+      font-size: 18px;
+      font-weight: 800;
+      color: #94a3b8;
+    }
+    .eq-highlight-green {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 10px;
+      padding: 6px 14px;
+    }
+    .eq-label-hero {
+      color: #047857;
+    }
+    .eq-val-hero {
+      color: #059669;
+      font-size: 18px;
+    }
+    .eq-sub-hero {
+      color: #059669;
+      font-weight: 600;
+    }
+
+    /* 4 Top Cards Grid */
+    .top-cards-grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+    .summary-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .summary-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .card-blue { border-left: 4px solid #0284c7; }
+    .card-slate { border-left: 4px solid #64748b; }
+    .card-amber { border-left: 4px solid #d97706; }
+
+    .card-head-flex {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .icon-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-blue { background: #e0f2fe; }
+    .icon-slate { background: #f1f5f9; }
+    .icon-amber { background: #fef3c7; }
+    .icon-emerald-glow {
+      background: rgba(255,255,255,0.25);
+    }
+
+    .card-body-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .card-sublabel {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .card-big-value {
+      font-size: 22px;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      margin: 2px 0;
     }
     .card-footer-note {
       font-size: 11px;
@@ -837,61 +932,51 @@ export interface PeriodicTrendSlot {
     }
 
     .text-blue { color: #0284c7; }
-    .text-rose { color: #e11d48; }
-    .text-teal { color: #0f766e; }
+    .text-slate { color: #475569; }
+    .text-teal { color: #0d9488; }
     .text-amber { color: #d97706; }
-    .text-purple { color: #7c3aed; }
     .text-emerald { color: #059669; }
 
     /* Hero Net Card */
     .hero-emerald-card {
-      background: linear-gradient(135deg, #064e3b, #047857);
+      background: linear-gradient(135deg, #065f46 0%, #047857 100%);
       color: #ffffff;
+      border: 1px solid #047857;
       border-radius: 14px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
       box-shadow: 0 4px 14px rgba(4,120,87,0.25);
     }
-    .hero-loss {
-      background: linear-gradient(135deg, #881337, #be123c);
-    }
-    .lime-icon-circle {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: rgba(255,255,255,0.2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #bef264;
-    }
-    .trend-pill-lime {
-      font-size: 11px;
-      font-weight: 800;
-      color: #bef264;
-      background: rgba(0,0,0,0.25);
-      padding: 2px 8px;
-      border-radius: 9999px;
-    }
     .hero-card-sublabel {
-      font-size: 11px;
+      font-size: 11.5px;
       font-weight: 700;
-      color: rgba(255,255,255,0.8);
+      color: rgba(255,255,255,0.85);
       text-transform: uppercase;
+      letter-spacing: 0.03em;
     }
     .hero-card-big-value {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 900;
       font-family: 'JetBrains Mono', monospace;
       color: #ffffff;
-      margin: 4px 0 2px;
+      margin: 2px 0;
     }
     .hero-card-footer-note {
-      font-size: 10.5px;
-      color: rgba(255,255,255,0.7);
+      font-size: 11px;
+      color: rgba(255,255,255,0.8);
     }
+
+    /* Status Pills */
+    .status-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .pill-blue { background: #e0f2fe; color: #0284c7; }
+    .pill-slate { background: #f1f5f9; color: #475569; }
+    .pill-amber { background: #fef3c7; color: #d97706; }
+    .pill-teal { background: #ccfbf1; color: #0f766e; }
+    .pill-purple { background: #ede9fe; color: #7c3aed; }
+    .pill-emerald-bright { background: #dcfce7; color: #15803d; }
 
     /* Middle Visual Grid */
     .middle-analytics-grid {
@@ -905,10 +990,10 @@ export interface PeriodicTrendSlot {
 
     .analytics-chart-panel, .donut-chart-panel {
       background: #ffffff;
-      border: 1px solid #eef2f6;
+      border: 1px solid #e2e8f0;
       border-radius: 16px;
       padding: 18px 20px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.02);
     }
     .panel-header-row {
       display: flex;
@@ -994,7 +1079,6 @@ export interface PeriodicTrendSlot {
     .bar-blue { background: #0284c7; }
     .bar-amber { background: #f59e0b; }
     .bar-emerald { background: #10b981; }
-    .bar-red { background: #ef4444; }
 
     .bar-day-label {
       font-size: 10px;
@@ -1008,7 +1092,7 @@ export interface PeriodicTrendSlot {
 
     .capsule-tooltip-bubble {
       position: absolute;
-      top: -65px;
+      top: -70px;
       background: #0f172a;
       color: #ffffff;
       padding: 6px 10px;
@@ -1027,7 +1111,7 @@ export interface PeriodicTrendSlot {
       display: flex;
       align-items: center;
       gap: 16px;
-      padding: 10px 0;
+      padding: 8px 0;
     }
     .donut-svg-wrapper {
       position: relative;
@@ -1043,8 +1127,8 @@ export interface PeriodicTrendSlot {
       align-items: center;
       justify-content: center;
     }
-    .center-pct { font-size: 18px; font-weight: 900; color: #0f172a; line-height: 1.1; }
-    .center-sub { font-size: 10px; font-weight: 700; color: #94a3b8; }
+    .center-pct { font-size: 18px; font-weight: 900; line-height: 1.1; }
+    .center-sub { font-size: 10px; font-weight: 700; color: #64748b; }
 
     .donut-legend-list {
       display: flex;
@@ -1054,7 +1138,7 @@ export interface PeriodicTrendSlot {
     }
     .legend-item-card {
       background: #f8fafc;
-      border: 1px solid #eef2f6;
+      border: 1px solid #e2e8f0;
       border-radius: 8px;
       padding: 6px 10px;
     }
@@ -1067,7 +1151,7 @@ export interface PeriodicTrendSlot {
     .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
     .dot-emerald { background: #10b981; }
     .dot-amber { background: #f59e0b; }
-    .dot-rose { background: #e11d48; }
+    .dot-slate { background: #64748b; }
     .legend-name { font-size: 10.5px; font-weight: 700; color: #475569; flex: 1; }
     .legend-pct { font-size: 10.5px; font-weight: 800; }
     .legend-val { font-size: 12px; font-weight: 800; color: #0f172a; font-family: monospace; }
@@ -1075,10 +1159,10 @@ export interface PeriodicTrendSlot {
     /* Bottom Financial Statement Panel */
     .financial-statement-panel {
       background: #ffffff;
-      border: 1px solid #eef2f6;
+      border: 1px solid #e2e8f0;
       border-radius: 16px;
       padding: 18px 20px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.02);
     }
     .statement-header-row {
       display: flex;
@@ -1112,7 +1196,7 @@ export interface PeriodicTrendSlot {
     }
     .tab-btn.active {
       background: #ffffff;
-      color: #0f766e;
+      color: #059669;
       box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
     .btn-export-statement {
@@ -1127,6 +1211,11 @@ export interface PeriodicTrendSlot {
       padding: 6px 12px;
       border-radius: 8px;
       cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-export-statement:hover {
+      background: #f1f5f9;
+      color: #0f172a;
     }
 
     /* Statement Table */
@@ -1167,38 +1256,6 @@ export interface PeriodicTrendSlot {
       background: #ecfdf5;
       border-top: 2px solid #6ee7b7;
       border-bottom: 2px solid #6ee7b7;
-    }
-    .row-loss td {
-      background: #fff1f2 !important;
-      border-color: #fecdd3 !important;
-    }
-
-    /* Badges */
-    .badge {
-      display: inline-block;
-      font-size: 10.5px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 6px;
-    }
-    .badge-primary { background: #e0f2fe; color: #0284c7; }
-    .badge-rose { background: #ffe4e6; color: #e11d48; }
-    .badge-teal { background: #ccfbf1; color: #0f766e; }
-    .badge-amber { background: #fef3c7; color: #d97706; }
-    .badge-purple { background: #ede9fe; color: #7c3aed; }
-    .badge-success { background: #dcfce7; color: #15803d; }
-
-    /* Modal Overlay */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.65);
-      backdrop-filter: blur(4px);
-      z-index: 10000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
     }
   `]
 })

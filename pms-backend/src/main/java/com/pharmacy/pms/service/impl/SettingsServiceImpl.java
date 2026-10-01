@@ -143,15 +143,38 @@ public class SettingsServiceImpl implements SettingsService {
             throw new BadRequestException("Uploaded logo file is empty");
         }
 
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new BadRequestException("Logo image size must not exceed 5MB");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || (!contentType.startsWith("image/") && !contentType.equals("image/svg+xml"))) {
+            throw new BadRequestException("Invalid file type. Only standard image files (PNG, JPG, SVG, WEBP) are allowed.");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String extension = "png";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            String ext = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+            if (List.of("png", "jpg", "jpeg", "svg", "webp", "gif").contains(ext)) {
+                extension = ext;
+            } else {
+                throw new BadRequestException("Unsupported image extension: ." + ext);
+            }
+        }
+
         try {
             String uploadsDir = "uploads/branding";
-            Path uploadPath = Paths.get(uploadsDir);
+            Path uploadPath = Paths.get(uploadsDir).toAbsolutePath().normalize();
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
 
-            String filename = "logo_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            Path filePath = uploadPath.resolve(filename);
+            String filename = "logo_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8) + "." + extension;
+            Path filePath = uploadPath.resolve(filename).normalize();
+            if (!filePath.startsWith(uploadPath)) {
+                throw new BadRequestException("Invalid file destination path");
+            }
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
             String logoUrl = "/api/v1/uploads/branding/" + filename;
@@ -162,6 +185,8 @@ public class SettingsServiceImpl implements SettingsService {
 
             logAudit(currentUserId, "UPDATE_LOGO", "PharmacyProfile", String.valueOf(saved.getId()), "Uploaded new logo: " + filename);
             return new PharmacyProfileResponse(saved);
+        } catch (BadRequestException ex) {
+            throw ex;
         } catch (Exception ex) {
             throw new BadRequestException("Failed to upload logo: " + ex.getMessage());
         }

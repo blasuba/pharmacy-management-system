@@ -44,13 +44,13 @@ public class DataInitializer implements CommandLineRunner {
     private final NotificationSettingsRepository notificationSettingsRepository;
     private final BackupScheduleRepository backupScheduleRepository;
 
-    @Value("${app.seed.admin-password:Admin@123}")
+    @Value("${app.seed.admin-password:}")
     private String initialAdminPassword;
 
-    @Value("${app.seed.pharmacist-password:Pharm@123}")
+    @Value("${app.seed.pharmacist-password:}")
     private String initialPharmacistPassword;
 
-    @Value("${app.seed.cashier-password:Cash@123}")
+    @Value("${app.seed.cashier-password:}")
     private String initialCashierPassword;
 
     public DataInitializer(UserRepository userRepository, RoleRepository roleRepository,
@@ -123,7 +123,7 @@ public class DataInitializer implements CommandLineRunner {
         User admin = new User();
         admin.setUsername("admin");
         admin.setEmail("admin@apexpharmacy.com");
-        admin.setPassword(passwordEncoder.encode(initialAdminPassword));
+        admin.setPassword(passwordEncoder.encode(resolveSeedPassword(initialAdminPassword, "Admin@123")));
         admin.setFirstName("Abebe");
         admin.setLastName("Kebede");
         admin.setBranch(mainBranch);
@@ -133,7 +133,7 @@ public class DataInitializer implements CommandLineRunner {
         User pharmacist = new User();
         pharmacist.setUsername("pharmacist");
         pharmacist.setEmail("pharmacist@apexpharmacy.com");
-        pharmacist.setPassword(passwordEncoder.encode(initialPharmacistPassword));
+        pharmacist.setPassword(passwordEncoder.encode(resolveSeedPassword(initialPharmacistPassword, "Pharm@123")));
         pharmacist.setFirstName("Bethlehem");
         pharmacist.setLastName("Tadesse");
         pharmacist.setBranch(mainBranch);
@@ -143,7 +143,7 @@ public class DataInitializer implements CommandLineRunner {
         User cashier = new User();
         cashier.setUsername("cashier");
         cashier.setEmail("cashier@apexpharmacy.com");
-        cashier.setPassword(passwordEncoder.encode(initialCashierPassword));
+        cashier.setPassword(passwordEncoder.encode(resolveSeedPassword(initialCashierPassword, "Cash@123")));
         cashier.setFirstName("Dawit");
         cashier.setLastName("Yohannes");
         cashier.setBranch(mainBranch);
@@ -385,5 +385,12 @@ public class DataInitializer implements CommandLineRunner {
             owner.getPermissions().addAll(allPerms);
             roleRepository.save(owner);
         });
+    }
+
+    private String resolveSeedPassword(String configured, String fallback) {
+        if (configured != null && !configured.trim().isEmpty()) {
+            return configured.trim();
+        }
+        return fallback;
     }
 }

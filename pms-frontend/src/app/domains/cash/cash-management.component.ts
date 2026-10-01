@@ -51,17 +51,18 @@ export interface CashTransaction {
           <div style="display: flex; align-items: center; gap: 10px;">
             <h1 style="font-size: 22px; font-weight: 800; color: var(--slate-900);">Cash Register & Drawer Management</h1>
             <span class="badge" [ngClass]="activeShift ? 'badge-success' : 'badge-warning'">
-              {{ activeShift ? 'Drawer Active (Shift #' + activeShift.shiftNumber + ')' : 'Drawer Closed' }}
+              {{ activeShift ? 'My Drawer Active — Shift #' + activeShift.shiftNumber : 'My Drawer is Closed' }}
             </span>
           </div>
           <p style="font-size: 13px; color: var(--slate-500); margin-top: 2px;">
-            Physical cash float tracking, live expected drawer balance, petty expense vouchers, and daily Z-Reports
+            Personal cash float, drawer balance, petty expenses · and audit all cashier shifts below
           </p>
         </div>
 
+        <!-- Action buttons: everyone (including owner) can manage THEIR OWN shift -->
         <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
           <button *ngIf="!activeShift" (click)="openOpenShiftModal()" class="btn btn-primary" style="box-shadow: var(--shadow); display: inline-flex; align-items: center; gap: 6px;">
-            <lucide-icon name="plus" [size]="15"></lucide-icon> Open Register Shift
+            <lucide-icon name="plus" [size]="15"></lucide-icon> Open My Register Shift
           </button>
 
           <ng-container *ngIf="activeShift">
@@ -72,7 +73,7 @@ export interface CashTransaction {
               <lucide-icon name="arrow-up-circle" [size]="14"></lucide-icon> - Cash-Out Payout
             </button>
             <button (click)="openCloseShiftModal()" class="btn btn-outline" style="padding: 7px 14px; font-size: 12px; background: #0f172a; color: #fff; border-color: #0f172a; display: inline-flex; align-items: center; gap: 6px;">
-              <lucide-icon name="lock" [size]="14"></lucide-icon> Close & Reconcile
+              <lucide-icon name="lock" [size]="14"></lucide-icon> Close & Reconcile My Shift
             </button>
           </ng-container>
         </div>
@@ -151,19 +152,25 @@ export interface CashTransaction {
         </div>
       </div>
 
-      <!-- Closed Drawer Alert -->
+
+      <!-- Closed Drawer Alert — shown to everyone when their own shift is not open -->
       <div *ngIf="!activeShift && !loading" class="card" style="background: #fffbeb; border: 1px solid #fde68a; display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; flex-wrap: wrap; gap: 12px;">
         <div style="display: flex; align-items: center; gap: 14px;">
           <div style="width: 42px; height: 42px; border-radius: 10px; background: #fef3c7; display: flex; align-items: center; justify-content: center; color: #d97706;">
             <lucide-icon name="alert-triangle" [size]="22"></lucide-icon>
           </div>
           <div>
-            <div style="font-weight: 800; font-size: 15px; color: #92400e;">Cash Register Drawer is Closed</div>
-            <div style="font-size: 13px; color: #b45309;">Please open a shift float to record cash sales and manage drawer transactions.</div>
+            <div style="font-weight: 800; font-size: 15px; color: #92400e;">Your Cash Register Drawer is Closed</div>
+            <div style="font-size: 13px; color: #b45309;">
+              Count your float money and open a shift to record your own cash transactions.
+              <span *ngIf="isManagerView()" style="display: block; margin-top: 2px; color: #78350f;">
+                As owner you can also view and audit all cashier shifts in the table below.
+              </span>
+            </div>
           </div>
         </div>
         <button (click)="openOpenShiftModal()" class="btn btn-warning" style="background: #d97706; color: #fff; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-          <lucide-icon name="plus" [size]="15"></lucide-icon> Open Shift Float Now
+          <lucide-icon name="plus" [size]="15"></lucide-icon> Open My Shift Float
         </button>
       </div>
 
@@ -173,14 +180,16 @@ export interface CashTransaction {
                 [style.background]="activeTab === 'shifts' ? '#0284c7' : 'transparent'"
                 [style.color]="activeTab === 'shifts' ? '#fff' : 'var(--slate-600)'"
                 class="btn" style="padding: 8px 16px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-          <lucide-icon name="history" [size]="15"></lucide-icon> Shift Audit & Z-Reports ({{ allShifts.length }})
+          <lucide-icon name="history" [size]="15"></lucide-icon> All Shifts ({{ allShifts.length }})
         </button>
 
-        <button *ngIf="activeShift" (click)="activeTab = 'transactions'"
+        <!-- Transactions tab: visible when either the user's own shift is active OR when auditing another shift -->
+        <button *ngIf="activeTransactions.length > 0" (click)="activeTab = 'transactions'"
                 [style.background]="activeTab === 'transactions' ? '#0284c7' : 'transparent'"
                 [style.color]="activeTab === 'transactions' ? '#fff' : 'var(--slate-600)'"
                 class="btn" style="padding: 8px 16px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-          <lucide-icon name="banknote" [size]="15"></lucide-icon> Active Shift Transactions ({{ activeTransactions.length }})
+          <lucide-icon name="banknote" [size]="15"></lucide-icon>
+          {{ viewingShiftLabel || 'My Shift Transactions' }} ({{ activeTransactions.length }})
         </button>
       </div>
 
@@ -195,7 +204,7 @@ export interface CashTransaction {
           </div>
 
           <div style="display: flex; gap: 8px; align-items: center;">
-            <select [(ngModel)]="shiftStatusFilter" (change)="shiftPage = 1" class="form-control" style="width: auto; min-width: 160px;">
+            <select [(ngModel)]="shiftStatusFilter" (change)="shiftPage = 1" aria-label="Filter shifts by status" class="form-control" style="width: auto; min-width: 160px;">
               <option value="">All Shifts</option>
               <option value="OPEN">Open Drawers</option>
               <option value="CLOSED">Closed Shifts</option>
@@ -252,10 +261,16 @@ export interface CashTransaction {
                       {{ s.status }}
                     </span>
                   </td>
-                  <td style="padding: 12px 16px; text-align: center;">
-                    <button (click)="viewZReport(s)" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
-                      <lucide-icon name="file-text" [size]="12"></lucide-icon> Z-Slip
-                    </button>
+                  <!-- Actions: Z-Slip + Transactions for all; Close only for own open shift -->
+                  <td style="padding: 10px 16px; text-align: center;">
+                    <div style="display: flex; gap: 5px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                      <button (click)="viewZReport(s)" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;" title="View Z-Report slip">
+                        <lucide-icon name="file-text" [size]="12"></lucide-icon> Z-Slip
+                      </button>
+                      <button (click)="viewShiftTransactions(s)" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-color: #0284c7; color: #0284c7;" title="View all drawer transactions for this shift">
+                        <lucide-icon name="list" [size]="12"></lucide-icon> Txns
+                      </button>
+                    </div>
                   </td>
                 </tr>
                 <tr *ngIf="filteredShifts().length === 0">
@@ -278,7 +293,7 @@ export interface CashTransaction {
           </div>
 
           <div style="display: flex; gap: 8px; align-items: center;">
-            <select [(ngModel)]="txTypeFilter" (change)="txPage = 1" class="form-control" style="width: auto; min-width: 160px;">
+            <select [(ngModel)]="txTypeFilter" (change)="txPage = 1" aria-label="Filter transactions by type" class="form-control" style="width: auto; min-width: 160px;">
               <option value="">All Transaction Types</option>
               <option value="CASH_IN">Cash-In Deposit</option>
               <option value="CASH_OUT">Cash-Out Payout</option>
@@ -539,6 +554,14 @@ export class CashManagementComponent implements OnInit {
   shiftStatusFilter = '';
   txSearchQuery = '';
   txTypeFilter = '';
+  /** Label shown in the Transactions tab to tell the user which shift they're auditing */
+  viewingShiftLabel = '';
+
+  /** Returns true when the logged-in user is an Owner or Admin (supervisor view — no personal drawer) */
+  isManagerView(): boolean {
+    const roles: string[] = this.currentUser?.roles || [];
+    return roles.some(r => r === 'ROLE_OWNER' || r === 'OWNER' || r === 'ROLE_SUPER_ADMIN' || r === 'SUPER_ADMIN');
+  }
 
   filteredShifts(): CashShift[] {
     const q = this.shiftSearchQuery.toLowerCase().trim();
@@ -607,11 +630,12 @@ export class CashManagementComponent implements OnInit {
 
   loadData() {
     this.loading = true;
+    // Everyone — including owners — can have their own personal shift
     this.http.get<{ data: CashShift }>(`${this.apiUrl}/current`).subscribe({
       next: res => {
         this.activeShift = res.data;
         if (this.activeShift) {
-          this.closeForm.closingActualCash = this.activeShift.expectedCash;
+          this.closeForm.closingActualCash = Math.max(0, this.activeShift.expectedCash);
           this.loadShiftTransactions(this.activeShift.id);
         }
         this.loadAllShifts();
@@ -637,6 +661,13 @@ export class CashManagementComponent implements OnInit {
     this.http.get<{ data: CashTransaction[] }>(`${this.apiUrl}/${shiftId}/transactions`).subscribe({
       next: res => this.activeTransactions = res.data || []
     });
+  }
+
+  /** Loads transactions for ANY shift (including other cashiers') and switches to the Transactions tab */
+  viewShiftTransactions(shift: CashShift) {
+    this.loadShiftTransactions(shift.id);
+    this.viewingShiftLabel = `Shift #${shift.shiftNumber} — ${shift.cashierName}`;
+    this.activeTab = 'transactions';
   }
 
   openOpenShiftModal() {
@@ -691,7 +722,8 @@ export class CashManagementComponent implements OnInit {
 
   openCloseShiftModal() {
     if (this.activeShift) {
-      this.closeForm = { closingActualCash: this.activeShift.expectedCash, notes: '' };
+      // Physical cash in drawer can never be negative — pre-fill with max(0, expected)
+      this.closeForm = { closingActualCash: Math.max(0, this.activeShift.expectedCash), notes: '' };
     }
     this.showCloseModal = true;
   }

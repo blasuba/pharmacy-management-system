@@ -66,7 +66,7 @@ export interface BranchItem {
           <label style="font-size: 12px; font-weight: 600; color: var(--slate-600); display: flex; align-items: center; gap: 4px;">
             <lucide-icon name="filter" [size]="13"></lucide-icon> Filter by Role:
           </label>
-          <select [(ngModel)]="selectedRoleFilter" (change)="applyFilter()" class="form-control" style="width: auto; min-width: 170px;">
+          <select [(ngModel)]="selectedRoleFilter" (change)="applyFilter()" aria-label="Filter staff users by role" class="form-control" style="width: auto; min-width: 170px;">
             <option value="">All Roles</option>
             <option *ngFor="let role of roles()" [value]="role.name">{{ getRoleLabel(role.name) }}</option>
           </select>

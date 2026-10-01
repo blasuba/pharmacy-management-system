@@ -169,6 +169,11 @@ public class CashManagementServiceImpl implements CashManagementService {
     @Override
     @Transactional
     public void recordSaleInShift(Long cashierId, BigDecimal amount, PaymentMethod paymentMethod) {
+        // Credit sales are accounts receivable — no money collected, don't touch the drawer
+        if (paymentMethod == PaymentMethod.CREDIT_ACCOUNT) {
+            return;
+        }
+
         CashShift shift = shiftRepository.findByCashierIdAndStatus(cashierId, ShiftStatus.OPEN)
                 .orElse(null);
         if (shift == null) {
@@ -178,6 +183,7 @@ public class CashManagementServiceImpl implements CashManagementService {
         if (paymentMethod == PaymentMethod.CASH) {
             shift.setCashSalesTotal(shift.getCashSalesTotal().add(amount));
         } else {
+            // MOBILE_MONEY, CARD, etc. — tracked for reporting, does NOT affect expected drawer cash
             shift.setDigitalSalesTotal(shift.getDigitalSalesTotal().add(amount));
         }
 

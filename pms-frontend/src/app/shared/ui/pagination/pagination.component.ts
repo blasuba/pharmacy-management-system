@@ -16,10 +16,12 @@ import { FormsModule } from '@angular/forms';
         </div>
 
         <div *ngIf="showPageSizeSelector" class="pms-page-size-wrapper">
-          <span class="pms-page-size-label">Rows:</span>
+          <label for="pageSizeSelect" class="pms-page-size-label">Rows:</label>
           <select 
+            id="pageSizeSelect"
             [ngModel]="pageSize" 
             (ngModelChange)="onPageSizeChange($event)"
+            aria-label="Select number of rows per page"
             class="pms-page-size-select">
             <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }} / page</option>
           </select>
@@ -33,9 +35,10 @@ import { FormsModule } from '@angular/forms';
           type="button"
           (click)="goToPage(1)"
           [disabled]="currentPage === 1"
+          aria-label="First Page"
           title="First Page"
           class="pms-nav-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polyline points="11 17 6 12 11 7"></polyline>
             <polyline points="18 17 13 12 18 7"></polyline>
           </svg>
@@ -46,9 +49,10 @@ import { FormsModule } from '@angular/forms';
           type="button"
           (click)="goToPage(currentPage - 1)"
           [disabled]="currentPage === 1"
+          aria-label="Previous Page"
           title="Previous Page"
           class="pms-nav-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
@@ -62,6 +66,8 @@ import { FormsModule } from '@angular/forms';
               type="button"
               (click)="goToPage(p)"
               [class.active]="p === currentPage"
+              [attr.aria-label]="'Page ' + p"
+              [attr.aria-current]="p === currentPage ? 'page' : null"
               class="pms-page-btn">
               {{ p }}
             </button>
@@ -73,9 +79,10 @@ import { FormsModule } from '@angular/forms';
           type="button"
           (click)="goToPage(currentPage + 1)"
           [disabled]="currentPage >= totalPages"
+          aria-label="Next Page"
           title="Next Page"
           class="pms-nav-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polyline points="9 18 15 12 9 6"></polyline>
           </svg>
         </button>
@@ -85,9 +92,10 @@ import { FormsModule } from '@angular/forms';
           type="button"
           (click)="goToPage(totalPages)"
           [disabled]="currentPage >= totalPages"
+          aria-label="Last Page"
           title="Last Page"
           class="pms-nav-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polyline points="13 17 18 12 13 7"></polyline>
             <polyline points="6 17 11 12 6 7"></polyline>
           </svg>

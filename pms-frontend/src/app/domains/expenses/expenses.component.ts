@@ -149,12 +149,12 @@ export interface Expense {
           </div>
 
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <select [(ngModel)]="categoryFilter" (change)="page.set(1)" class="form-control" style="width: auto; min-width: 170px;">
+            <select [(ngModel)]="categoryFilter" (change)="page.set(1)" aria-label="Filter expenses by category" class="form-control" style="width: auto; min-width: 170px;">
               <option value="">All Categories</option>
               <option *ngFor="let cat of availableCategories" [value]="cat">{{ formatCategory(cat) }}</option>
             </select>
 
-            <select [(ngModel)]="paymentMethodFilter" (change)="page.set(1)" class="form-control" style="width: auto; min-width: 170px;">
+            <select [(ngModel)]="paymentMethodFilter" (change)="page.set(1)" aria-label="Filter expenses by payment method" class="form-control" style="width: auto; min-width: 170px;">
               <option value="">All Payment Methods</option>
               <option value="CASH">Physical Cash</option>
               <option value="MOBILE_MONEY">Telebirr / Mobile Money</option>

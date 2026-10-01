@@ -3,15 +3,15 @@ services:
     image: postgres:16-alpine
     container_name: pms-postgres
     environment:
-      POSTGRES_DB: pmsdb
-      POSTGRES_USER: pms_user
-      POSTGRES_PASSWORD: pms_password
+      POSTGRES_DB: ${DB_NAME:-pmsdb}
+      POSTGRES_USER: ${DB_USERNAME:-pms_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-pms_password}
     ports:
-      - "5434:5432"
+      - "${DB_PORT:-5434}:5432"
     volumes:
       - pms_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pms_user -d pmsdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-pms_user} -d ${DB_NAME:-pmsdb}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -23,11 +23,20 @@ services:
       dockerfile: Dockerfile
     container_name: pms-backend
     ports:
-      - "8081:8081"
+      - "${BACKEND_PORT:-8081}:8081"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/pmsdb
-      DB_USERNAME: pms_user
-      DB_PASSWORD: pms_password
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-pmsdb}
+      DB_USERNAME: ${DB_USERNAME:-pms_user}
+      DB_PASSWORD: ${DB_PASSWORD:-pms_password}
+      JWT_SECRET: ${JWT_SECRET:-9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-604800000}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-Admin@123}
+      PHARMACIST_INITIAL_PASSWORD: ${PHARMACIST_INITIAL_PASSWORD:-Pharm@123}
+      CASHIER_INITIAL_PASSWORD: ${CASHIER_INITIAL_PASSWORD:-Cash@123}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4200,http://127.0.0.1:4200}
+    volumes:
+      - pms_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,10 +48,11 @@ services:
       dockerfile: Dockerfile
     container_name: pms-frontend
     ports:
-      - "4200:80"
+      - "${FRONTEND_PORT:-4200}:80"
     depends_on:
       - backend
     restart: unless-stopped
 
 volumes:
   pms_pgdata:
+  pms_uploads:

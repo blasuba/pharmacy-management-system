@@ -22,7 +22,7 @@ export interface Supplier {
 
 export interface PurchaseOrderItem {
   id?: number;
-  drug: {
+  drug?: {
     id: number;
     name: string;
     genericName?: string;
@@ -42,13 +42,13 @@ export interface PurchaseOrderItem {
 export interface PurchaseOrder {
   id: number;
   poNumber: string;
-  supplier: Supplier;
+  supplier?: Supplier;
   orderDate: string;
   status: 'DRAFT' | 'ORDERED' | 'RECEIVED';
   totalAmount: number;
   paidAmount: number;
   notes?: string;
-  items: PurchaseOrderItem[];
+  items?: PurchaseOrderItem[];
   createdAt?: string;
 }
 
@@ -147,7 +147,7 @@ export interface PurchaseOrder {
           </div>
 
           <div style="display: flex; gap: 8px; align-items: center;">
-            <select [(ngModel)]="orderStatusFilter" (change)="orderPage.set(1)" class="form-control" style="width: auto; min-width: 170px;">
+            <select [(ngModel)]="orderStatusFilter" (change)="orderPage.set(1)" aria-label="Filter purchase orders by status" class="form-control" style="width: auto; min-width: 170px;">
               <option value="">All PO Statuses</option>
               <option value="DRAFT">Draft</option>
               <option value="ORDERED">Ordered / Pending GRN</option>

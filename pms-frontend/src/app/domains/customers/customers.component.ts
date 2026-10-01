@@ -94,7 +94,7 @@ export interface CustomerItem {
         </div>
 
         <div style="display: flex; gap: 8px; align-items: center;">
-          <select [(ngModel)]="selectedTypeFilter" class="form-control" style="width: auto; min-width: 170px;">
+          <select [(ngModel)]="selectedTypeFilter" aria-label="Filter customers by account type" class="form-control" style="width: auto; min-width: 170px;">
             <option value="">All Account Types</option>
             <option value="RETAIL">Retail Customers</option>
             <option value="WHOLESALE">Wholesale Clinics</option>

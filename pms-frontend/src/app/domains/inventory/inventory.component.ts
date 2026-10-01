@@ -83,7 +83,7 @@ export interface MovementItem {
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
         <div>
           <h1 style="font-size: 22px; font-weight: 800; color: var(--slate-900);">Pharmaceutical Inventory & FEFO Ledger</h1>
-          <p style="font-size: 13px; color: var(--slate-500);">Complete drug catalog CRUD, FEFO batch intake, stock adjustments, and categories</p>
+          <p style="font-size: 13px; color: var(--slate-600); font-weight: 500;">Complete drug catalog CRUD, FEFO batch intake, stock adjustments, and categories</p>
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button (click)="openDrugModal()" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
@@ -140,7 +140,7 @@ export interface MovementItem {
             <input type="text" [(ngModel)]="searchQuery" (input)="loadDrugs()"
                    class="form-control" style="padding-left: 36px;" placeholder="Search catalog by drug name, generic formulation, or barcode..." />
           </div>
-          <select [(ngModel)]="selectedCategoryFilter" (change)="applyCategoryFilter()" class="form-control" style="width: auto; min-width: 180px;">
+          <select [(ngModel)]="selectedCategoryFilter" (change)="applyCategoryFilter()" aria-label="Filter drugs by category" class="form-control" style="width: auto; min-width: 180px;">
             <option value="">All Categories</option>
             <option *ngFor="let c of categories()" [value]="c.name">{{ c.name }}</option>
           </select>
@@ -156,7 +156,7 @@ export interface MovementItem {
             (pageSizeChange)="drugPageSize.set($event); drugPage.set(1)">
           </app-pagination>
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
-            <thead style="background: #f8fafc; border-bottom: 1px solid var(--slate-200); color: var(--slate-600); font-weight: 700;">
+            <thead style="background: #f8fafc; border-bottom: 1px solid var(--slate-200); color: var(--slate-700); font-weight: 700;">
               <tr>
                 <th style="padding: 12px 16px;">Brand & Generic Name</th>
                 <th style="padding: 12px 16px;">Category</th>
@@ -172,7 +172,7 @@ export interface MovementItem {
               <tr *ngFor="let drug of (filteredDrugs() | paginate: drugPage() : drugPageSize())" style="border-bottom: 1px solid var(--slate-100);" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
                 <td style="padding: 12px 16px;">
                   <div style="font-weight: 800; color: var(--slate-900);">{{ drug.name }}</div>
-                  <div style="font-size: 11px; color: var(--slate-500);">{{ drug.genericName }}</div>
+                  <div style="font-size: 11px; color: var(--slate-600);">{{ drug.genericName }}</div>
                 </td>
                 <td style="padding: 12px 16px;">
                   <span class="badge badge-primary">{{ drug.categoryName }}</span>
@@ -196,10 +196,10 @@ export interface MovementItem {
                 </td>
                 <td style="padding: 12px 16px; text-align: right;">
                   <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
-                    <button (click)="openEditDrugModal(drug)" class="btn btn-outline" style="padding: 4px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                    <button (click)="openEditDrugModal(drug)" class="btn btn-outline" [attr.aria-label]="'Edit ' + drug.name" style="padding: 4px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
                       <lucide-icon name="edit-2" [size]="13"></lucide-icon> Edit
                     </button>
-                    <button (click)="confirmDeleteDrug(drug)" class="btn btn-outline" style="padding: 4px 8px; font-size: 12px; color: #ef4444; display: inline-flex; align-items: center;">
+                    <button (click)="confirmDeleteDrug(drug)" class="btn btn-outline" [attr.aria-label]="'Delete ' + drug.name" style="padding: 4px 8px; font-size: 12px; color: #ef4444; display: inline-flex; align-items: center;" title="Delete Drug">
                       <lucide-icon name="trash-2" [size]="13"></lucide-icon>
                     </button>
                   </div>
@@ -223,52 +223,52 @@ export interface MovementItem {
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
           <div class="card" style="border-left: 4px solid #0284c7; padding: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 11px; font-weight: 700; color: var(--slate-500); text-transform: uppercase;">Active Batches</span>
+              <span style="font-size: 11px; font-weight: 700; color: var(--slate-600); text-transform: uppercase;">Active Batches</span>
               <lucide-icon name="boxes" [size]="16" color="#0284c7"></lucide-icon>
             </div>
             <div style="font-size: 22px; font-weight: 800; color: var(--slate-900); margin: 4px 0 2px;">
               {{ filteredBatches().length }} Batches
             </div>
-            <div style="font-size: 11px; color: var(--slate-500);">
+            <div style="font-size: 11px; color: var(--slate-600); font-weight: 500;">
               {{ getTotalBatchUnits() }} total stock units
             </div>
           </div>
 
           <div class="card" style="border-left: 4px solid #10b981; padding: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 11px; font-weight: 700; color: var(--slate-500); text-transform: uppercase;">Retail Valuation</span>
+              <span style="font-size: 11px; font-weight: 700; color: var(--slate-600); text-transform: uppercase;">Retail Valuation</span>
               <lucide-icon name="wallet" [size]="16" color="#059669"></lucide-icon>
             </div>
-            <div style="font-size: 22px; font-weight: 800; color: #059669; margin: 4px 0 2px; font-family: monospace;">
+            <div style="font-size: 22px; font-weight: 800; color: #047857; margin: 4px 0 2px; font-family: monospace;">
               ETB {{ getTotalBatchRetailValue() | number:'1.2-2' }}
             </div>
-            <div style="font-size: 11px; color: var(--slate-500);">
+            <div style="font-size: 11px; color: var(--slate-600); font-weight: 500;">
               Cost value: ETB {{ getTotalBatchCostValue() | number:'1.2-2' }}
             </div>
           </div>
 
           <div class="card" style="border-left: 4px solid #8b5cf6; padding: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 11px; font-weight: 700; color: var(--slate-500); text-transform: uppercase;">Profit Headroom</span>
+              <span style="font-size: 11px; font-weight: 700; color: var(--slate-600); text-transform: uppercase;">Profit Headroom</span>
               <lucide-icon name="trending-up" [size]="16" color="#7c3aed"></lucide-icon>
             </div>
-            <div style="font-size: 22px; font-weight: 800; color: #7c3aed; margin: 4px 0 2px; font-family: monospace;">
+            <div style="font-size: 22px; font-weight: 800; color: #6d28d9; margin: 4px 0 2px; font-family: monospace;">
               ETB {{ getPotentialBatchProfit() | number:'1.2-2' }}
             </div>
-            <div style="font-size: 11px; color: var(--slate-500);">
+            <div style="font-size: 11px; color: var(--slate-600); font-weight: 500;">
               Potential gross profit margin
             </div>
           </div>
 
           <div class="card" style="border-left: 4px solid #f59e0b; padding: 14px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 11px; font-weight: 700; color: var(--slate-500); text-transform: uppercase;">Expiry Risk Alerts</span>
+              <span style="font-size: 11px; font-weight: 700; color: var(--slate-600); text-transform: uppercase;">Expiry Risk Alerts</span>
               <lucide-icon name="alert-triangle" [size]="16" color="#d97706"></lucide-icon>
             </div>
-            <div style="font-size: 22px; font-weight: 800; color: #d97706; margin: 4px 0 2px;">
+            <div style="font-size: 22px; font-weight: 800; color: #b45309; margin: 4px 0 2px;">
               {{ getNearExpiryCount() }} Near / {{ getExpiredCount() }} Expired
             </div>
-            <div style="font-size: 11px; color: var(--slate-500);">
+            <div style="font-size: 11px; color: var(--slate-600); font-weight: 500;">
               FEFO inspection required
             </div>
           </div>
@@ -283,12 +283,12 @@ export interface MovementItem {
           </div>
 
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <select [(ngModel)]="selectedDrugForBatches" (change)="loadBatchesForSelectedDrug()" class="form-control" style="width: auto; min-width: 220px;">
+            <select [(ngModel)]="selectedDrugForBatches" (change)="loadBatchesForSelectedDrug()" aria-label="Filter batches by drug" class="form-control" style="width: auto; min-width: 220px;">
               <option value="ALL">📦 All Drugs (Complete Stock Ledger)</option>
               <option *ngFor="let d of drugs()" [value]="d.id">{{ d.name }} ({{ d.genericName }})</option>
             </select>
 
-            <select [(ngModel)]="batchStatusFilter" class="form-control" style="width: auto; min-width: 150px;">
+            <select [(ngModel)]="batchStatusFilter" aria-label="Filter batches by status" class="form-control" style="width: auto; min-width: 150px;">
               <option value="">All Statuses</option>
               <option value="OPTIMAL">Optimal / Safe</option>
               <option value="NEAR_EXPIRY">Expiring Soon (&lt;90d)</option>
@@ -316,7 +316,7 @@ export interface MovementItem {
           </app-pagination>
           <div style="overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
-              <thead style="background: #f8fafc; border-bottom: 1px solid var(--slate-200); color: var(--slate-600); font-weight: 700;">
+              <thead style="background: #f8fafc; border-bottom: 1px solid var(--slate-200); color: var(--slate-700); font-weight: 700;">
                 <tr>
                   <th style="padding: 12px 16px;">Drug & Generic Formulation</th>
                   <th style="padding: 12px 16px;">Batch #</th>
@@ -333,7 +333,7 @@ export interface MovementItem {
                 <tr *ngFor="let b of (filteredBatches() | paginate: batchPage() : batchPageSize())" style="border-bottom: 1px solid var(--slate-100);" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
                   <td style="padding: 12px 16px;">
                     <div style="font-weight: 800; color: var(--slate-900);">{{ b.drugName }}</div>
-                    <div style="font-size: 11px; color: var(--slate-500);">{{ b.genericName || 'Pharmaceutical' }} • {{ b.unitOfMeasure || 'Units' }}</div>
+                    <div style="font-size: 11px; color: var(--slate-600);">{{ b.genericName || 'Pharmaceutical' }} • {{ b.unitOfMeasure || 'Units' }}</div>
                   </td>
                   <td style="padding: 12px 16px; font-weight: 700;">
                     <span style="font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0; color: #0284c7;">
@@ -365,17 +365,17 @@ export interface MovementItem {
                   </td>
                   <td style="padding: 12px 16px; text-align: center;">
                     <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
-                      <button (click)="viewBatchDetails(b)" class="btn btn-outline" style="padding: 4px 6px; font-size: 11px; color: #0284c7; border-color: #bae6fd;" title="View Complete Dossier">
-                        <lucide-icon name="eye" [size]="13"></lucide-icon>
+                      <button (click)="viewBatchDetails(b)" class="btn btn-outline" [attr.aria-label]="'View dossier for batch ' + b.batchNumber" style="padding: 4px 6px; font-size: 11px; color: #0284c7; border-color: #bae6fd;" title="View Complete Dossier">
+                        <lucide-icon name="eye" [size]="13" aria-hidden="true"></lucide-icon>
                       </button>
-                      <button (click)="printBatchTag(b)" class="btn btn-outline" style="padding: 4px 6px; font-size: 11px; color: #059669; border-color: #a7f3d0;" title="Print Stock Tag">
-                        <lucide-icon name="printer" [size]="13"></lucide-icon>
+                      <button (click)="printBatchTag(b)" class="btn btn-outline" [attr.aria-label]="'Print stock tag for batch ' + b.batchNumber" style="padding: 4px 6px; font-size: 11px; color: #059669; border-color: #a7f3d0;" title="Print Stock Tag">
+                        <lucide-icon name="printer" [size]="13" aria-hidden="true"></lucide-icon>
                       </button>
-                      <button (click)="openEditBatchModal(b)" class="btn btn-outline" style="padding: 4px 6px; font-size: 11px;" title="Edit Pricing & Expiry">
-                        <lucide-icon name="edit-2" [size]="13"></lucide-icon>
+                      <button (click)="openEditBatchModal(b)" class="btn btn-outline" [attr.aria-label]="'Edit pricing and expiry for batch ' + b.batchNumber" style="padding: 4px 6px; font-size: 11px;" title="Edit Pricing & Expiry">
+                        <lucide-icon name="edit-2" [size]="13" aria-hidden="true"></lucide-icon>
                       </button>
-                      <button (click)="confirmDeleteBatch(b)" class="btn btn-outline" style="padding: 4px 6px; font-size: 11px; color: #ef4444; border-color: #fecaca;" title="Delete Batch">
-                        <lucide-icon name="trash-2" [size]="13"></lucide-icon>
+                      <button (click)="confirmDeleteBatch(b)" class="btn btn-outline" [attr.aria-label]="'Delete batch ' + b.batchNumber" style="padding: 4px 6px; font-size: 11px; color: #ef4444; border-color: #fecaca;" title="Delete Batch">
+                        <lucide-icon name="trash-2" [size]="13" aria-hidden="true"></lucide-icon>
                       </button>
                     </div>
                   </td>
@@ -404,7 +404,7 @@ export interface MovementItem {
           </div>
 
           <div style="display: flex; gap: 8px; align-items: center;">
-            <select [(ngModel)]="movementTypeFilter" (change)="movementPage.set(1)" class="form-control" style="width: auto; min-width: 170px;">
+            <select [(ngModel)]="movementTypeFilter" (change)="movementPage.set(1)" aria-label="Filter movements by type" class="form-control" style="width: auto; min-width: 170px;">
               <option value="">All Movement Types</option>
               <option value="PURCHASE_RECEIPT">Purchase Receipt</option>
               <option value="SALE_DEDUCTION">Sale Deduction</option>
@@ -430,7 +430,7 @@ export interface MovementItem {
             (pageSizeChange)="movementPageSize.set($event); movementPage.set(1)">
           </app-pagination>
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
-            <thead style="background: #f8fafc; color: var(--slate-600);">
+            <thead style="background: #f8fafc; color: var(--slate-700); font-weight: 700;">
               <tr>
                 <th style="padding: 10px 16px;">Timestamp</th>
                 <th style="padding: 10px 16px;">Drug & Batch</th>
@@ -442,7 +442,7 @@ export interface MovementItem {
             </thead>
             <tbody>
               <tr *ngFor="let m of (filteredMovements() | paginate: movementPage() : movementPageSize())" style="border-bottom: 1px solid var(--slate-100);">
-                <td style="padding: 10px 16px; color: var(--slate-500);">{{ m.createdAt | date:'short' }}</td>
+                <td style="padding: 10px 16px; color: var(--slate-600);">{{ m.createdAt | date:'short' }}</td>
                 <td style="padding: 10px 16px; font-weight: 700;">{{ m.drugName }} ({{ m.batchNumber }})</td>
                 <td style="padding: 10px 16px;"><span class="badge badge-primary">{{ m.movementType }}</span></td>
                 <td style="padding: 10px 16px; font-weight: 800;" [style.color]="m.quantity >= 0 ? '#059669' : '#dc2626'">
@@ -530,8 +530,8 @@ export interface MovementItem {
           <h3 style="font-size: 18px; font-weight: 800;">
             {{ isEditingDrug() ? 'Edit Drug Details' : 'Register New Pharmaceutical Drug' }}
           </h3>
-          <button (click)="showDrugModal.set(false)" style="background: none; border: none; cursor: pointer; color: var(--slate-400); display: flex; align-items: center;">
-            <lucide-icon name="x" [size]="18"></lucide-icon>
+          <button (click)="showDrugModal.set(false)" aria-label="Close modal" style="background: none; border: none; cursor: pointer; color: var(--slate-400); display: flex; align-items: center; width: 32px; height: 32px; justify-content: center; border-radius: 6px;">
+            <lucide-icon name="x" [size]="18" aria-hidden="true"></lucide-icon>
           </button>
         </div>
 
@@ -549,14 +549,14 @@ export interface MovementItem {
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div>
-              <label style="font-size: 12px; font-weight: 700;">Category *</label>
-              <select [(ngModel)]="drugForm.categoryId" name="categoryId" required class="form-control">
+              <label for="drugCategorySelect" style="font-size: 12px; font-weight: 700;">Category *</label>
+              <select id="drugCategorySelect" [(ngModel)]="drugForm.categoryId" name="categoryId" required class="form-control" aria-label="Drug therapeutic category">
                 <option *ngFor="let c of categories()" [value]="c.id">{{ c.name }}</option>
               </select>
             </div>
             <div>
-              <label style="font-size: 12px; font-weight: 700;">Dosage Form *</label>
-              <select [(ngModel)]="drugForm.dosageForm" name="dosageForm" class="form-control">
+              <label for="drugDosageSelect" style="font-size: 12px; font-weight: 700;">Dosage Form *</label>
+              <select id="drugDosageSelect" [(ngModel)]="drugForm.dosageForm" name="dosageForm" class="form-control" aria-label="Drug dosage form">
                 <option value="TABLET">TABLET</option>
                 <option value="CAPSULE">CAPSULE</option>
                 <option value="SYRUP">SYRUP</option>
@@ -612,15 +612,15 @@ export interface MovementItem {
           <h3 style="font-size: 18px; font-weight: 800;">
             {{ isEditingBatch() ? 'Edit Batch Pricing & Expiry' : 'Register Drug Batch (FEFO Intake)' }}
           </h3>
-          <button (click)="showBatchModal.set(false)" style="background: none; border: none; cursor: pointer; color: var(--slate-400); display: flex; align-items: center;">
-            <lucide-icon name="x" [size]="18"></lucide-icon>
+          <button (click)="showBatchModal.set(false)" aria-label="Close modal" style="background: none; border: none; cursor: pointer; color: var(--slate-400); display: flex; align-items: center; width: 32px; height: 32px; justify-content: center; border-radius: 6px;">
+            <lucide-icon name="x" [size]="18" aria-hidden="true"></lucide-icon>
           </button>
         </div>
 
         <form (ngSubmit)="saveBatch()" style="display: flex; flex-direction: column; gap: 12px;">
           <div>
-            <label style="font-size: 12px; font-weight: 700;">Select Drug *</label>
-            <select [(ngModel)]="batchForm.drugId" name="drugId" [disabled]="isEditingBatch()" required class="form-control">
+            <label for="batchDrugSelect" style="font-size: 12px; font-weight: 700;">Select Drug *</label>
+            <select id="batchDrugSelect" [(ngModel)]="batchForm.drugId" name="drugId" [disabled]="isEditingBatch()" required class="form-control" aria-label="Select pharmaceutical drug">
               <option *ngFor="let d of drugs()" [value]="d.id">{{ d.name }} ({{ d.genericName }})</option>
             </select>
           </div>
@@ -663,8 +663,8 @@ export interface MovementItem {
           </div>
 
           <div>
-            <label style="font-size: 12px; font-weight: 700;">Supplier</label>
-            <select [(ngModel)]="batchForm.supplierId" name="supplierId" class="form-control">
+            <label for="batchSupplierSelect" style="font-size: 12px; font-weight: 700;">Supplier</label>
+            <select id="batchSupplierSelect" [(ngModel)]="batchForm.supplierId" name="supplierId" class="form-control" aria-label="Select batch supplier">
               <option [ngValue]="null">None / Local Intake</option>
               <option *ngFor="let s of suppliers()" [value]="s.id">{{ s.name }}</option>
             </select>
@@ -689,16 +689,16 @@ export interface MovementItem {
           <h3 style="font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
             <lucide-icon name="sliders" [size]="20" color="#d97706"></lucide-icon> Record Stock Adjustment
           </h3>
-          <button (click)="showAdjustModal.set(false)" style="background: none; border: none; cursor: pointer; color: var(--slate-400); display: flex; align-items: center;">
-            <lucide-icon name="x" [size]="18"></lucide-icon>
+          <button (click)="showAdjustModal.set(false)" aria-label="Close modal" style="background: none; border: none; cursor: pointer; color: var(--slate-400); display: flex; align-items: center; width: 32px; height: 32px; justify-content: center; border-radius: 6px;">
+            <lucide-icon name="x" [size]="18" aria-hidden="true"></lucide-icon>
           </button>
         </div>
         <p style="font-size: 12px; color: var(--slate-500); margin-bottom: 16px;">Adjust quantity for damaged stock, physical count variance, or expired goods</p>
 
         <form (ngSubmit)="saveAdjustment()" style="display: flex; flex-direction: column; gap: 12px;">
           <div>
-            <label style="font-size: 12px; font-weight: 700;">Select Batch to Adjust *</label>
-            <select [(ngModel)]="adjustForm.batchId" name="batchId" required class="form-control">
+            <label for="adjustBatchSelect" style="font-size: 12px; font-weight: 700;">Select Batch to Adjust *</label>
+            <select id="adjustBatchSelect" [(ngModel)]="adjustForm.batchId" name="batchId" required class="form-control" aria-label="Select batch to adjust">
               <option [ngValue]="null" disabled>-- Select a drug batch --</option>
               <option *ngFor="let b of allBatches()" [ngValue]="b.id">
                 {{ b.drugName }} - Batch #{{ b.batchNumber }} (Current Qty: {{ b.quantityOnHand }})
@@ -712,8 +712,8 @@ export interface MovementItem {
               <input type="number" [(ngModel)]="adjustForm.quantityAdjusted" name="quantityAdjusted" required class="form-control" placeholder="-5 or +10" />
             </div>
             <div>
-              <label style="font-size: 12px; font-weight: 700;">Reason Code *</label>
-              <select [(ngModel)]="adjustForm.reason" name="reason" class="form-control">
+              <label for="adjustReasonSelect" style="font-size: 12px; font-weight: 700;">Reason Code *</label>
+              <select id="adjustReasonSelect" [(ngModel)]="adjustForm.reason" name="reason" class="form-control" aria-label="Adjustment reason code">
                 <option value="DAMAGED_EXPIRED">Damaged or Expired Stock</option>
                 <option value="INVENTORY_COUNT_VARIANCE">Physical Count Variance</option>
                 <option value="RETURN_TO_SUPPLIER">Return to Supplier</option>
@@ -744,8 +744,8 @@ export interface MovementItem {
           <h3 style="font-size: 17px; font-weight: 800;">
             {{ isEditingCategory() ? 'Edit Category' : 'Create Drug Category' }}
           </h3>
-          <button (click)="showCategoryModal.set(false)" style="background: none; border: none; cursor: pointer; color: var(--slate-400); display: flex; align-items: center;">
-            <lucide-icon name="x" [size]="18"></lucide-icon>
+          <button (click)="showCategoryModal.set(false)" aria-label="Close modal" style="background: none; border: none; cursor: pointer; color: var(--slate-400); display: flex; align-items: center; width: 32px; height: 32px; justify-content: center; border-radius: 6px;">
+            <lucide-icon name="x" [size]="18" aria-hidden="true"></lucide-icon>
           </button>
         </div>
 
@@ -1072,17 +1072,25 @@ export class InventoryComponent implements OnInit {
       const tab = params['tab'];
       if (tab && ['DRUGS', 'BATCHES', 'MOVEMENTS', 'CATEGORIES'].includes(tab)) {
         this.activeTab.set(tab as any);
+        if (tab === 'MOVEMENTS') {
+          this.loadMovements();
+        }
       }
     });
 
+    // Primary initial data for first view
     this.loadDrugs();
     this.loadCategories();
-    this.loadSuppliers();
-    this.loadMovements();
   }
 
   switchTab(tab: 'DRUGS' | 'BATCHES' | 'MOVEMENTS' | 'CATEGORIES'): void {
     this.activeTab.set(tab);
+    if (tab === 'MOVEMENTS' && this.movements().length === 0) {
+      this.loadMovements();
+    }
+    if (tab === 'BATCHES' && this.currentDrugBatches().length === 0) {
+      this.loadBatchesForSelectedDrug();
+    }
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tab },
@@ -1349,6 +1357,9 @@ export class InventoryComponent implements OnInit {
 
   // Batch CRUD
   openBatchModal(): void {
+    if (this.suppliers().length === 0) {
+      this.loadSuppliers();
+    }
     this.isEditingBatch.set(false);
     this.editingBatchId = null;
     this.batchForm = {

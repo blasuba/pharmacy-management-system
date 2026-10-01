@@ -142,8 +142,8 @@ public class PosServiceImpl implements PosService {
             saleItemRepository.save(item);
         }
 
-        // Register sale in active cashier shift drawer
-        cashManagementService.recordSaleInShift(cashierId, paid, sale.getPaymentMethod());
+        // Register sale in active cashier shift drawer (use grandTotal, NOT paid — change goes back to customer)
+        cashManagementService.recordSaleInShift(cashierId, grandTotal, sale.getPaymentMethod());
 
         return new PosReceiptResponse(savedSale);
     }

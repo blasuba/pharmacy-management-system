@@ -70,7 +70,7 @@ import { ConfirmationService } from '../../core/services/confirmation.service';
           <!-- Logo & Basic Info -->
           <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 24px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
             <div style="width: 80px; height: 80px; border-radius: 12px; background: #0284c7; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid #bae6fd; flex-shrink: 0;">
-              <img *ngIf="profile.logoPath" [src]="profile.logoPath" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" (error)="profile.logoPath = ''" />
+              <img *ngIf="profile.logoPath" [src]="settingsService.resolveLogoUrl(profile.logoPath)" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" (error)="profile.logoPath = ''" />
               <lucide-icon *ngIf="!profile.logoPath" name="store" [size]="36" color="#ffffff"></lucide-icon>
             </div>
             <div>
@@ -1043,7 +1043,7 @@ export class SettingsComponent implements OnInit {
   systemInfo: SystemInfo | null = null;
 
   constructor(
-    private settingsService: SettingsService,
+    public settingsService: SettingsService,
     public authService: AuthService,
     private notif: NotificationService,
     private confirmService: ConfirmationService,

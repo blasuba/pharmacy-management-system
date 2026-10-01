@@ -113,7 +113,7 @@ export interface ParkedSale {
 
               <!-- Customer Selector -->
               <div style="display: flex; align-items: center; gap: 6px; min-width: 200px;">
-                <select [(ngModel)]="selectedCustomerId" (change)="onCustomerSelected()" class="form-control" style="height: 38px; font-size: 12.5px; font-weight: 600;">
+                <select [(ngModel)]="selectedCustomerId" (change)="onCustomerSelected()" aria-label="Select customer or patient" class="form-control" style="height: 38px; font-size: 12.5px; font-weight: 600;">
                   <option [ngValue]="null">👤 Walk-in Patient</option>
                   <option *ngFor="let c of customers" [ngValue]="c.id">
                     {{ c.name }} ({{ c.phone || 'No phone' }})
@@ -122,7 +122,7 @@ export interface ParkedSale {
               </div>
 
               <!-- Price Tier -->
-              <select [(ngModel)]="customerType" (change)="onCustomerTypeChange()" class="form-control" style="width: auto; height: 38px; font-size: 12.5px; font-weight: 600;">
+              <select [(ngModel)]="customerType" (change)="onCustomerTypeChange()" aria-label="Select customer pricing tier" class="form-control" style="width: auto; height: 38px; font-size: 12.5px; font-weight: 600;">
                 <option value="RETAIL">Retail Tier</option>
                 <option value="WHOLESALE">Wholesale</option>
                 <option value="DISTRIBUTOR">Distributor</option>
@@ -130,11 +130,11 @@ export interface ParkedSale {
 
               <!-- View Switcher (Grid vs Table) -->
               <div style="display: flex; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #f8fafc;">
-                <button (click)="viewMode = 'grid'" [class.active-view]="viewMode === 'grid'" class="view-btn" title="Touch Tiles Grid View">
-                  <lucide-icon name="layout-grid" [size]="15"></lucide-icon>
+                <button (click)="viewMode = 'grid'" [class.active-view]="viewMode === 'grid'" class="view-btn" aria-label="Touch Tiles Grid View" title="Touch Tiles Grid View">
+                  <lucide-icon name="layout-grid" [size]="15" aria-hidden="true"></lucide-icon>
                 </button>
-                <button (click)="viewMode = 'table'" [class.active-view]="viewMode === 'table'" class="view-btn" title="Clinical Dense Table View">
-                  <lucide-icon name="list" [size]="15"></lucide-icon>
+                <button (click)="viewMode = 'table'" [class.active-view]="viewMode === 'table'" class="view-btn" aria-label="Clinical Dense Table View" title="Clinical Dense Table View">
+                  <lucide-icon name="list" [size]="15" aria-hidden="true"></lucide-icon>
                 </button>
               </div>
             </div>
@@ -1003,7 +1003,7 @@ export class PosComponent implements OnInit, OnDestroy {
   }
 
   loadCategories(): void {
-    this.http.get<any>(`${environment.apiUrl}/categories`).subscribe({
+    this.http.get<any>(`${environment.apiUrl}/drugs/categories`).subscribe({
       next: (res) => {
         if (res.data && Array.isArray(res.data)) {
           const names = res.data.map((c: any) => c.name);
